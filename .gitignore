@@ -1,0 +1,4 @@
+.nix-gems
+tmp/
+.bundle
+.idea
