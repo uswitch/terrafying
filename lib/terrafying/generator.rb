@@ -86,6 +86,7 @@ module Terrafying
       aws_vpn_gateway
       aws_sqs_queue
       aws_cloudwatch_log_subscription_filter
+      aws_proxy_protocol_policy
     ].each do |type|
       define_method type do |name, attributes={}|
         resource(type, name, attributes)
