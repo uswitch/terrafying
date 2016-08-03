@@ -147,7 +147,7 @@ module Terrafying
         state = store.get
         File.write(State::STATE_FILENAME, state) if state
       rescue => e
-        raise "Error retrieving state for config #{config}: #{e}"
+        raise "Error retrieving state for config #{self}: #{e}"
       end
       
       yield block
@@ -157,7 +157,7 @@ module Terrafying
           store.put(IO.read(State::STATE_FILENAME))
         end
       rescue => e
-        raise "Error updating state for config #{config}: #{e}"
+        raise "Error updating state for config #{self}: #{e}"
       end      
     end
     
