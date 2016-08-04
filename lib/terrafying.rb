@@ -40,9 +40,9 @@ module Terrafying
       with_config do
         with_state(mode: :read) do
           if @options[:target]
-            system("terraform plan -backup=- #{@dir} -target=#{@options[:target]}")
+            system("terraform plan -target=#{@options[:target]}")
           else
-            system("terraform plan -backup=- #{@dir}")
+            system("terraform plan")
           end
         end
       end
