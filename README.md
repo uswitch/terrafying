@@ -5,7 +5,7 @@ A small ruby dsl for [terraform](https://www.terraform.io), based on [terrafied]
 ## Setup
 
 - Ruby 2.2:ish
-- Terraform: https://www.terraform.io/downloads.html
+- Terraform >=0.7.0: https://www.terraform.io/downloads.html
   - OSX: `brew install terraform`
 - `bundle install`
 
