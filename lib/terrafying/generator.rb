@@ -43,6 +43,7 @@ module Terrafying
     end
 
     %w[aws_vpc
+      aws_rds_cluster
       aws_route
       aws_route_table
       aws_route_table_association
