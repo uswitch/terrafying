@@ -76,6 +76,7 @@ module Terrafying
       aws_elasticsearch_domain
       aws_volume_attachment
       aws_db_instance
+      aws_db_subnet_group
       aws_dynamodb_table
       aws_kinesis_firehose_delivery_stream
       aws_kinesis_stream
