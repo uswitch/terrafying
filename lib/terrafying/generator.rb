@@ -70,6 +70,17 @@ module Terrafying
       aws_nat_gateway
       aws_eip
       aws_elb
+      aws_elb_service_account
+      aws_alb
+      aws_alb_listener
+      aws_alb_target_group
+      aws_alb_target_group_attachment
+      aws_alb_target_group_rule
+      aws_load_balancer_policy
+      aws_load_balancer_backend_server_policy
+      aws_load_balancer_listener_policy
+      aws_vpn_gateway_attachment
+      aws_lb_ssl_negotiation_policy
       aws_s3_bucket
       aws_security_group
       aws_security_group_rule
