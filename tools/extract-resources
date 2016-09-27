@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set -euo pipefail
+IFS=$'\t\n'
+
+terraform_tag="${1-"master"}"
+
+repo_directory="$(mktemp -d)"
+
+function echoerr() {
+	(>&2 echo $@)
+}
+
+git clone https://github.com/hashicorp/terraform.git "${repo_directory}" >&2
+pushd "${repo_directory}" >&2
+git checkout $terraform_tag >&2
+popd >&2
+
+echo "module Terrafying"
+printf "  Resources=%%w["
+
+for provider_file in $(find "terraform/builtin/providers" -iname "provider.go")
+do
+	set +e
+	resource_lines=$(grep -E '^\s+"[^"]+":\s+[rR]esource[a-zA-Z0-9]*\(\).*$' "${provider_file}")
+	any_lines=$?
+	set -e
+
+	if [ $any_lines -ne 0 ]
+	then
+		echoerr "No resources found in ${provider_file}"
+	else
+		echoerr "Found $(printf "${resource_lines}\n" | wc -l | xargs -L1 echo) resources in ${provider_file}"
+		printf "${resource_lines}" | sed -E 's/^.+"(.+)".+$/\1/'
+	fi
+done
+
+echo "  ]"
+echo "end"

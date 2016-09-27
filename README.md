@@ -140,4 +140,13 @@ If you or someone else has a lock that you want to re-acquire or steal
 $ ./bin/terrafying apply -f example/main.rb
 ```
 
+## Extract resources from Terraform
 
+There is a script that can be run to automatically generate a list of
+the builtin resources that terraform exposes. In order to update this
+list you can run the following, just replace the version of terraform
+you want to import from:
+
+```
+$ ./tools/extract-resources v0.7.4 lib/terrafying/resources.rb
+```
