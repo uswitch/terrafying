@@ -6,7 +6,7 @@ require 'terrafying/aws'
 
 module Terrafying
   module Generator
-    include Terrafying::Aws
+    extend Terrafying::Aws
 
     PROVIDER_DEFAULTS = {
       aws: { region: 'eu-west-1' }
@@ -16,17 +16,21 @@ module Terrafying
       "resource" => {}
     }
 
-    def provider(name, spec)
+    def self.generate(&block)
+      instance_eval(&block)
+    end
+
+    def self.provider(name, spec)
       @@output["provider"][name] = spec
     end
 
-    def resource(type, name, attributes)
+    def self.resource(type, name, attributes)
       @@output["resource"][type.to_s] ||= {}
       @@output["resource"][type.to_s][name.to_s] = attributes
       id_of(type, name)
     end
 
-    def template(relative_path, params = {})
+    def self.template(relative_path, params = {})
       dir = caller_locations[0].path
       filename = File.join(File.dirname(dir), relative_path)
       erb = ERB.new(IO.read(filename))
@@ -34,11 +38,11 @@ module Terrafying
       erb.result(OpenStruct.new(params).instance_eval { binding })
     end
 
-    def id_of(type,name)
+    def self.id_of(type,name)
       "${#{type}.#{name}.id}"
     end
 
-    def output_of(type, name, value)
+    def self.output_of(type, name, value)
       "${#{type}.#{name}.#{value}}"
     end
 
@@ -101,7 +105,7 @@ module Terrafying
       aws_cloudwatch_log_subscription_filter
       aws_proxy_protocol_policy
     ].each do |type|
-      define_method type do |name, attributes={}|
+      define_singleton_method type do |name, attributes={}|
         resource(type, name, attributes)
       end
     end
