@@ -13,8 +13,6 @@ require 'terrafying/lock'
 require 'terrafying/version'
 require 'terrafying/state'
 
-include Terrafying::Generator
-
 module Terrafying
 
   class Config
@@ -47,7 +45,7 @@ module Terrafying
         end
       end
     end
-    
+
     def apply
       with_config do
         with_lock do
@@ -75,7 +73,7 @@ module Terrafying
     def show_state
       puts(State.store(self).get)
     end
-    
+
     def use_remote_state
       with_lock do
         local = State.local(self)
@@ -96,10 +94,10 @@ module Terrafying
         end
       end
     end
-    
+
 
     private
-   
+
     def with_config(&block)
       name = File.basename(@path, ".*")
       dir = File.join(git_toplevel, 'tmp', SecureRandom.uuid)
@@ -110,7 +108,7 @@ module Terrafying
           File.write(output, Terrafying::Generator.pretty_generate)
           yield block
         ensure
-          FileUtils.rm_rf(dir) unless @options[:keep] 
+          FileUtils.rm_rf(dir) unless @options[:keep]
         end
       end
     end
@@ -149,23 +147,23 @@ module Terrafying
       rescue => e
         raise "Error retrieving state for config #{self}: #{e}"
       end
-      
+
       yield block
 
       begin
-        if opts[:mode] == :update 
+        if opts[:mode] == :update
           store.put(IO.read(State::STATE_FILENAME))
         end
       rescue => e
         raise "Error updating state for config #{self}: #{e}"
-      end      
+      end
     end
-    
+
     def scope_for_path(path)
       top_level_path = Pathname.new(git_toplevel)
       Pathname.new(@path).relative_path_from(top_level_path).to_s
     end
-    
+
     def git_toplevel
       @top_level ||= begin
                        top_level = `git rev-parse --show-toplevel`
@@ -173,6 +171,6 @@ module Terrafying
                        File.expand_path(top_level.chomp)
                      end
     end
-    
+
   end
 end

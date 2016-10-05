@@ -14,7 +14,7 @@ A small ruby dsl for [terraform](https://www.terraform.io), based on [terrafied]
 The `terrafying` command is in `bin`:
 
 ```
-$ ./bin/terrafying 
+$ ./bin/terrafying
 Commands:
   terrafying apply PATH             # Apply changes to resources
   terrafying destroy PATH           # Destroy resources
@@ -39,16 +39,18 @@ Create ruby file somewhere and declare resources as you wish.
 For example `example/main.rb`
 
 ```ruby
-aws_security_group "example_group", {
-  name: "example_group",
-  description: "Allow all inbound traffic to port 80",
-  vpc_id: 'vpc-ec0c118e',
+Terrafying::Generator.generate {
+  aws_security_group "example_group", {
+    name: "example_group",
+    description: "Allow all inbound traffic to port 80",
+    vpc_id: 'vpc-ec0c118e',
 
-  ingress: {
-    from_port: 80,
-    to_port: 80,
-    protocol: "tcp",
-    cidr_blocks: ["0.0.0.0/0"],
+    ingress: {
+      from_port: 80,
+      to_port: 80,
+      protocol: "tcp",
+      cidr_blocks: ["0.0.0.0/0"],
+    }
   }
 }
 ```
@@ -58,7 +60,7 @@ aws_security_group "example_group", {
 Run `./bin/terrafying plan example/main.rb`:
 
 ```
-$ ./bin/terrafying plan example/main.rb 
+$ ./bin/terrafying plan example/main.rb
 Refreshing Terraform state prior to plan...
 
 
@@ -96,7 +98,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 Run `./bin/terrafying apply`
 
 ```
-$ ./bin/terrafying apply example/main.rb 
+$ ./bin/terrafying apply example/main.rb
 aws_security_group.example_group: Creating...
   description:                          "" => "Allow all inbound traffic to port 80"
   egress.#:                             "" => "<computed>"
@@ -139,5 +141,3 @@ If you or someone else has a lock that you want to re-acquire or steal
 ```
 $ ./bin/terrafying apply -f example/main.rb
 ```
-
-
