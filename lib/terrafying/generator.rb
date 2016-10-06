@@ -97,6 +97,7 @@ module Terrafying
       aws_kinesis_stream
       aws_sqs_queue
       aws_elasticache_cluster
+      aws_elasticache_replication_group
       github_team
       github_team_membership
       github_team_repository
