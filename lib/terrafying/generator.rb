@@ -24,6 +24,13 @@ module Terrafying
       @@output["provider"][name] = spec
     end
 
+    def self.data(type, name, spec)
+      @@output["data"] ||= {}
+      @@output["data"][type.to_s] ||= {}
+      @@output["data"][type.to_s][name.to_s] = spec
+      id_of(type, name)
+    end
+
     def self.resource(type, name, attributes)
       @@output["resource"][type.to_s] ||= {}
       @@output["resource"][type.to_s][name.to_s] = attributes
