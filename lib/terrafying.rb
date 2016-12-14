@@ -99,7 +99,7 @@ module Terrafying
     private
 
     def with_config(&block)
-      abort("ERROR: You must have terraform installed to run this gem") unless terraform_installed?
+      abort("***** ERROR: You must have terraform installed to run this gem *****") unless terraform_installed?
       check_version
       name = File.basename(@path, ".*")
       dir = File.join(git_toplevel, 'tmp', SecureRandom.uuid)
@@ -175,13 +175,17 @@ module Terrafying
     end
 
     def check_version
-      if (`terraform -v` =~ /#{Terrafying::CLI_VERSION}/) == nil
-        abort("ERROR: You must have #{Terrafying::CLI_VERSION} of Terraform installed to run any command")
+      if terraform_version != Terrafying::CLI_VERSION
+        abort("***** ERROR: You must have v#{Terrafying::CLI_VERSION} of terraform installed to run any command (you are running v#{terraform_version}) *****")
       end
     end
 
     def terraform_installed?
       which('terraform')
+    end
+
+    def terraform_version
+      `terraform -v`.split("v").last.delete!("\n")
     end
 
     # Cross-platform way of finding an executable in the $PATH.
