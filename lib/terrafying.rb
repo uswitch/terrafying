@@ -99,6 +99,8 @@ module Terrafying
     private
 
     def with_config(&block)
+      abort("***** ERROR: You must have terraform installed to run this gem *****") unless terraform_installed?
+      check_version
       name = File.basename(@path, ".*")
       dir = File.join(git_toplevel, 'tmp', SecureRandom.uuid)
       FileUtils.mkdir_p dir
@@ -172,5 +174,32 @@ module Terrafying
                      end
     end
 
+    def check_version
+      if terraform_version != Terrafying::CLI_VERSION
+        abort("***** ERROR: You must have v#{Terrafying::CLI_VERSION} of terraform installed to run any command (you are running v#{terraform_version}) *****")
+      end
+    end
+
+    def terraform_installed?
+      which('terraform')
+    end
+
+    def terraform_version
+      `terraform -v`.split("v").last.delete!("\n")
+    end
+
+    # Cross-platform way of finding an executable in the $PATH.
+    #
+    #   which('ruby') #=> /usr/bin/ruby
+    def which(cmd)
+      exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(';') : ['']
+      ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
+        exts.each { |ext|
+          exe = File.join(path, "#{cmd}#{ext}")
+          return exe if File.executable?(exe) && !File.directory?(exe)
+        }
+      end
+      return nil
+    end
   end
 end
