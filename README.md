@@ -5,9 +5,13 @@ A small ruby dsl for [terraform](https://www.terraform.io), based on [terrafied]
 ## Setup
 
 - Ruby 2.2:ish
-- Terraform >= 0.7.1: https://www.terraform.io/downloads.html
+- Terraform = 0.8.0: https://www.terraform.io/downloads.html
   - OSX: `brew install terraform`
 - `bundle install`
+
+###
+
+`Terraform::CLI_VERSION` checks for the correct version of terraform. Due to Hashicorp continually releasing versions and sometimes with breaking changes / bugs, we have locked the terraform version of this DSL to `0.8.0`. As terraform continues to get updated we will attempt to keep this version up-to-date with the latest stable version of terraform.
 
 ## Usage
 
