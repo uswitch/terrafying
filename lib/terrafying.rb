@@ -185,7 +185,7 @@ module Terrafying
     end
 
     def terraform_version
-      `terraform -v`.split("v").last.delete!("\n")
+      `terraform -v`.split("\n").first.split("v").last
     end
 
     # Cross-platform way of finding an executable in the $PATH.
