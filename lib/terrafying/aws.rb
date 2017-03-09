@@ -142,6 +142,32 @@ module Terrafying
             end
           end
       end
+
+      def route_table(name)
+        @route_tables ||= {}
+        @route_tables[name] ||=
+          begin
+            STDERR.puts "looking for a route table with name '#{name}'"
+            route_tables = @ec2_client.describe_route_tables(
+              {
+                filters: [
+                  {
+                    name: "tag:Name",
+                    values: [name],
+                  },
+                ],
+              }
+            ).route_tables
+            case
+            when route_tables.count == 1
+              route_tables.first.route_table_id
+            when route_tables.count < 1
+              raise "No route table with name '#{name}' was found."
+            when route_tables.count > 1
+              raise "More than one route table with name '#{name}' was found: " + route_tables.join(', ')
+            end
+          end
+      end
     end
 
     def aws
