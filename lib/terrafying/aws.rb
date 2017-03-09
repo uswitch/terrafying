@@ -110,6 +110,38 @@ module Terrafying
             m.sort { |x,y| y.creation_date <=> x.creation_date }.shift.image_id
           end
       end
+
+      def availability_zones
+        @availability_zones ||=
+          begin
+            STDERR.puts "looking for AZs in the current region"
+            resp = @ec2_client.describe_availability_zones({})
+            resp.availability_zones.map { |zone|
+              zone.zone_name
+            }
+          end
+      end
+
+      def vpc(name)
+        @vpcs ||= {}
+        @vpcs[name] ||=
+          begin
+            STDERR.puts "looking for a VPC with name '#{name}'"
+            resp = @ec2_client.describe_vpcs({})
+            matching_vpcs = resp.vpcs.select { |vpc|
+              name_tag = vpc.tags.select { |tag| tag.key == "Name" }.first
+              name_tag && name_tag.value == name
+            }
+            case
+            when matching_vpcs.count == 1
+              matching_vpcs.first.vpc_id
+            when matching_vpcs.count < 1
+              raise "No VPC with name '#{name}' was found."
+            when matching_vpcs.count > 1
+              raise "More than one VPC with name '#{name}' was found: " + matching_vpcs.join(', ')
+            end
+          end
+      end
     end
 
     def aws
