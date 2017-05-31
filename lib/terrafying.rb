@@ -37,11 +37,15 @@ module Terrafying
     def plan
       with_config do
         with_state(mode: :read) do
-          if @options[:target]
-            system("terraform plan -target=#{@options[:target]}")
-          else
-            system("terraform plan")
-          end
+          exec_with_optional_target 'plan'
+        end
+      end
+    end
+
+    def graph
+      with_config do
+        with_state(mode: :read) do
+          exec_with_optional_target 'graph'
         end
       end
     end
@@ -50,11 +54,7 @@ module Terrafying
       with_config do
         with_lock do
           with_state(mode: :update) do
-            if @options[:target]
-              system("terraform apply -backup=- #{@dir} -target=#{@options[:target]}")
-            else
-              system("terraform apply -backup=- #{@dir}")
-            end
+            exec_with_optional_target "apply -backup=- #{@dir}"
           end
         end
       end
@@ -95,8 +95,15 @@ module Terrafying
       end
     end
 
-
     private
+
+    def exec_with_optional_target(command)
+      if @options[:target]
+        system("terraform #{command} -target=#{@options[:target]}")
+      else
+        system("terraform #{command}")
+      end
+    end
 
     def with_config(&block)
       abort("***** ERROR: You must have terraform installed to run this gem *****") unless terraform_installed?
