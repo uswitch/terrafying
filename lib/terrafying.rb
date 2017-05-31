@@ -46,6 +46,18 @@ module Terrafying
       end
     end
 
+    def graph
+      with_config do
+        with_state(mode: :read) do
+          if @options[:target]
+            system("terraform graph -target=#{@options[:target]}")
+          else
+            system("terraform graph")
+          end
+        end
+      end
+    end
+
     def apply
       with_config do
         with_lock do

@@ -19,6 +19,11 @@ module Terrafying
       Config.new(path, options).plan
     end
 
+    desc "graph PATH", "Show execution graph"
+    def graph(path)
+      Config.new(path, options).graph
+    end
+
     desc "apply PATH", "Apply changes to resources"
     option :force, :aliases => ['f'], :type => :boolean, :desc => "Forcefully remove any pending locks"
     def apply(path)
