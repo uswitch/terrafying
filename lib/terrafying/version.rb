@@ -1,4 +1,4 @@
 module Terrafying
   VERSION = "1.0.3"
-  CLI_VERSION = "0.9.8"
+  CLI_VERSION = "0.9.9"
 end
