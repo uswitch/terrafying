@@ -110,11 +110,16 @@ module Terrafying
       check_version
       name = File.basename(@path, ".*")
       dir = File.join(git_toplevel, 'tmp', SecureRandom.uuid)
-      FileUtils.mkdir_p dir
-      output = File.join(dir, name + ".tf.json")
+      terraform_files = File.join(git_toplevel, ".terraform/")
+      unless Dir.exists?(terraform_files)
+        abort("***** ERROR: No .terraform directory found. Please run 'terraform init' to install plugins *****")
+      end
+      FileUtils.mkdir_p(dir)
+      output_path = File.join(dir, name + ".tf.json")
+      FileUtils.cp_r(terraform_files, dir)
       Dir.chdir(dir) do
         begin
-          File.write(output, Terrafying::Generator.pretty_generate)
+          File.write(output_path, Terrafying::Generator.pretty_generate)
           yield block
         ensure
           FileUtils.rm_rf(dir) unless @options[:keep]
