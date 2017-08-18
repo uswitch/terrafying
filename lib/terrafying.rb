@@ -98,11 +98,12 @@ module Terrafying
     private
 
     def exec_with_optional_target(command)
-      if @options[:target]
-        system("terraform #{command} -target=#{@options[:target]}")
+      output = if @options[:target]
+        `terraform #{command} -target=#{@options[:target]}`
       else
-        system("terraform #{command}")
+        `terraform #{command}`
       end
+      puts output.gsub('\n', "\n").gsub('\\"', "\"")
     end
 
     def with_config(&block)
