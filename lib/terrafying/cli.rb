@@ -4,7 +4,7 @@ module Terrafying
   class Cli < Thor
     class_option :no_lock, :type => :boolean, :default => false
     class_option :keep, :type => :boolean, :default => false
-    class_option :target
+    class_option :target, :type => :string, :default => nil
     
     desc "list PATH", "List resources defined"
     def list(path)

@@ -96,10 +96,13 @@ module Terrafying
     end
 
     private
+    def targets(options)
+      @options[:target].split(",").map {|target| "-target=#{target}"}.join(" ")
+    end
 
     def exec_with_optional_target(command)
       output = if @options[:target]
-        `terraform #{command} -target=#{@options[:target]}`
+        `terraform #{command} #{targets(@options)}`
       else
         `terraform #{command}`
       end
