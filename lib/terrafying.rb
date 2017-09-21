@@ -64,7 +64,7 @@ module Terrafying
       with_config do
         with_lock do
           with_state(mode: :update) do
-            system("terraform destroy -backup=- #{@dir}")
+            stream_command("terraform destroy -backup=- #{@dir}")
           end
         end
       end
@@ -101,12 +101,12 @@ module Terrafying
     end
 
     def exec_with_optional_target(command)
-      output = if @options[:target]
-        `terraform #{command} #{targets(@options)}`
+      cmd = if @options[:target]
+        "terraform #{command} #{targets(@options)}"
       else
-        `terraform #{command}`
+        "terraform #{command}"
       end
-      puts output.gsub('\n', "\n").gsub('\\"', "\"")
+      stream_command(cmd)
     end
 
     def with_config(&block)
@@ -202,6 +202,14 @@ module Terrafying
 
     def terraform_version
       `terraform -v`.split("\n").first.split("v").last
+    end
+
+    def stream_command(cmd)
+      IO.popen(cmd) do |io|
+        while (line = io.gets) do
+          puts line.gsub('\n', "\n").gsub('\\"', "\"")
+        end
+      end
     end
 
     # Cross-platform way of finding an executable in the $PATH.
