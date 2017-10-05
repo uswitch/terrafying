@@ -95,6 +95,16 @@ module Terrafying
       end
     end
 
+    def import(addr, id)
+      with_config do
+        with_lock do
+          with_state(mode: :update) do
+            exec_with_optional_target "import  -backup=- #{@dir} #{addr} #{id}"
+          end
+        end
+      end
+    end
+
     private
     def targets(options)
       @options[:target].split(",").map {|target| "-target=#{target}"}.join(" ")
