@@ -22,7 +22,9 @@ $ ./bin/terrafying
 Commands:
   terrafying apply PATH             # Apply changes to resources
   terrafying destroy PATH           # Destroy resources
+  terrafying graph PATH             # Show execution graph
   terrafying help [COMMAND]         # Describe available commands or one specific command
+  terrafying import PATH ADDR ID    # Import existing infrastructure into your Terraform state
   terrafying json PATH              # Show terraform JSON
   terrafying list PATH              # List resources defined
   terrafying plan PATH              # Show execution plan
@@ -31,9 +33,9 @@ Commands:
   terrafying use-remote-state PATH  # Migrate to using remote state storage
 
 Options:
-  [--no-lock], [--no-no-lock]  
-  [--keep], [--no-keep]        
-                               # Default: true
+  [--no-lock], [--no-no-lock]
+  [--keep], [--no-keep]
+  [--target=TARGET]
 ```
 
 ### Creating a specification

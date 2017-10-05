@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    terrafying (1.0.3)
+    terrafying (1.0.7)
       aws-sdk (~> 2)
       deep_merge (~> 1.1.1)
       thor (~> 0.19.1)
