@@ -5,7 +5,7 @@ module Terrafying
     class_option :no_lock, :type => :boolean, :default => false
     class_option :keep, :type => :boolean, :default => false
     class_option :target, :type => :string, :default => nil
-    
+
     desc "list PATH", "List resources defined"
     def list(path)
       puts "Defined resources:\n\n"
@@ -35,7 +35,7 @@ module Terrafying
     def destroy(path)
       Config.new(path, options).destroy
     end
-    
+
     desc "json PATH", "Show terraform JSON"
     def json(path)
       puts(Config.new(path, options).json)
@@ -45,7 +45,7 @@ module Terrafying
     def show_state(path)
       puts(Config.new(path, options).show_state)
     end
-    
+
     desc "use-remote-state PATH", "Migrate to using remote state storage"
     def use_remote_state(path)
       puts(Config.new(path, options).use_remote_state)
@@ -55,6 +55,11 @@ module Terrafying
     def use_local_state(path)
       puts(Config.new(path, options).use_local_state)
     end
-    
+
+    desc "import PATH ADDR ID", "Import existing infrastructure into your Terraform state"
+    def import(path, addr, id)
+      Config.new(path, options).import(addr, id)
+    end
+
   end
 end
