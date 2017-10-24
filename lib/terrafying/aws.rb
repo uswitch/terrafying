@@ -168,6 +168,32 @@ module Terrafying
             end
           end
       end
+
+      def elastic_ip(alloc_id)
+        @ips ||= {}
+        @ips[alloc_id] ||=
+          begin
+            STDERR.puts "looking for an elastic ip with allocation_id '#{alloc_id}'"
+            ips = @ec2_client.describe_addresses(
+              {
+                filters: [
+                  {
+                    name: "allocation-id",
+                    values: [alloc_id],
+                  },
+                ],
+              }
+            ).addresses
+            case
+            when ips.count == 1
+              ips.first
+            when ips.count < 1
+              raise "No elastic ip with allocation_id '#{alloc_id}' was found."
+            when ips.count > 1
+              raise "More than one elastic ip with allocation_id '#{alloc_id}' was found: " + ips.join(', ')
+            end
+          end
+      end
     end
 
     def aws
