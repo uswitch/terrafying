@@ -20,6 +20,7 @@ module Terrafying
         "provider" => PROVIDER_DEFAULTS,
         "resource" => {}
       }
+      @children = []
     end
 
     def aws
@@ -55,6 +56,10 @@ module Terrafying
       erb.result(OpenStruct.new(params).instance_eval { binding })
     end
 
+    def output_with_children
+      @children.inject(@output) { |out, c| out.deep_merge(c.output_with_children) }
+    end
+
     def id_of(type,name)
       "${#{type}.#{name}.id}"
     end
@@ -63,18 +68,15 @@ module Terrafying
       "${#{type}.#{name}.#{value}}"
     end
 
-    def method_missing(fn, *args)
-      resource(fn, args.shift.to_s, args.first)
-    end
-
     def pretty_generate
-      JSON.pretty_generate(@output)
+      JSON.pretty_generate(output_with_children)
     end
 
     def resource_names
+      out = output_with_children
       ret = []
-      for type in @output["resource"].keys
-        for id in @output["resource"][type].keys
+      for type in out["resource"].keys
+        for id in out["resource"][type].keys
           ret << "#{type}.#{id}"
         end
       end
@@ -82,7 +84,8 @@ module Terrafying
     end
 
     def add!(c)
-      @output.deep_merge!(c.output)
+      @children.push(c)
+      c
     end
 
   end

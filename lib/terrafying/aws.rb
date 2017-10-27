@@ -11,6 +11,7 @@ module Terrafying
         })
         @ec2_resource = ::Aws::EC2::Resource.new
         @ec2_client = ::Aws::EC2::Client.new
+        @route53_client = ::Aws::Route53::Client.new
       end
 
       def security_group(name)
@@ -134,7 +135,7 @@ module Terrafying
             }
             case
             when matching_vpcs.count == 1
-              matching_vpcs.first.vpc_id
+              matching_vpcs.first
             when matching_vpcs.count < 1
               raise "No VPC with name '#{name}' was found."
             when matching_vpcs.count > 1
@@ -191,6 +192,25 @@ module Terrafying
               raise "No elastic ip with allocation_id '#{alloc_id}' was found."
             when ips.count > 1
               raise "More than one elastic ip with allocation_id '#{alloc_id}' was found: " + ips.join(', ')
+            end
+          end
+      end
+
+      def hosted_zone(fqdn)
+        @hosted_zones ||= {}
+        @hosted_zones[fqdn] ||=
+          begin
+            STDERR.puts "looking for a hosted zone with fqdn '#{fqdn}'"
+            hosted_zones = @route53_client.list_hosted_zones_by_name({ dns_name: fqdn }).hosted_zones.select { |zone|
+              zone.name == "#{fqdn}."
+            }
+            case
+            when hosted_zones.count == 1
+              hosted_zones.first
+            when hosted_zones.count < 1
+              raise "No hosted zone with fqdn '#{fqdn}' was found."
+            when hosted_zones.count > 1
+              raise "More than one hosted zone with name '#{fqdn}' was found: " + hosted_zones.join(', ')
             end
           end
       end
