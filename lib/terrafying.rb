@@ -220,6 +220,10 @@ module Terrafying
           puts line.gsub('\n', "\n").gsub('\\"', "\"")
         end
       end
+      unless $? == 0
+        STDERR.puts "***** ERROR: Unable to execute terraform command *****"
+        exit($?)
+      end
     end
 
     # Cross-platform way of finding an executable in the $PATH.
