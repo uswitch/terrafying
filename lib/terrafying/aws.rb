@@ -63,6 +63,55 @@ module Terrafying
           end
       end
 
+      def route_table_for_subnet(subnet_id)
+        @route_table_for_subnet ||= {}
+        @route_table_for_subnet[subnet_id] ||=
+          begin
+            resp = @ec2_client.describe_route_tables(
+              {
+                filters: [
+                  { name: "association.subnet-id", values: [ subnet_id ] },
+                ],
+              })
+
+            route_tables = resp.route_tables
+
+            case
+            when route_tables.count == 1
+              route_tables.first
+            when route_tables.count < 1
+              raise "No route table for subnet '#{subnet_id}' was found."
+            when profiles.count > 1
+              raise "More than route table for subnet '#{subnet_id}' found: " + route_tables.join(', ')
+            end
+          end
+      end
+
+      def route_table_for_vpc(vpc_id)
+        @route_table_for_vpc ||= {}
+        @route_table_for_vpc[vpc_id] ||=
+          begin
+            resp = @ec2_client.describe_route_tables(
+              {
+                filters: [
+                  { name: "association.main", values: [ "true" ] },
+                  { name: "vpc-id", values: [ vpc_id ] },
+                ],
+              })
+
+            route_tables = resp.route_tables
+
+            case
+            when route_tables.count == 1
+              route_tables.first
+            when route_tables.count < 1
+              raise "No route table for vpc '#{vpc_id}' was found."
+            when profiles.count > 1
+              raise "More than route table for vpc '#{vpc_id}' found: " + route_tables.join(', ')
+            end
+          end
+      end
+
       def security_groups(*names)
         names.map{|n| security_group(n)}
       end
@@ -92,8 +141,50 @@ module Terrafying
           end
       end
 
+      def subnet_by_id(id)
+        @subnets_by_id ||= {}
+        @subnets_by_id[id] ||=
+          begin
+            resp = @ec2_client.describe_subnets(
+              {
+                subnet_ids: [id],
+              })
+            subnets = resp.subnets
+            case
+            when subnets.count == 1
+              subnets.first
+            when subnets.count < 1
+              raise "No subnet with id '#{id}' was found."
+            when subnets.count > 1
+              raise "More than one subnet with this id '#{id}' found : " + subnets.join(', ')
+            end
+          end
+      end
+
       def subnets(*names)
         names.map{|n| subnet(n)}
+      end
+
+      def subnets_for_vpc(vpc_id)
+        @subnets_for_vpc ||= {}
+        @subnets_for_vpc[vpc_id] ||=
+          begin
+            resp = @ec2_client.describe_subnets(
+              {
+                filters: [
+                  { name: "vpc-id", values: [ vpc_id ] },
+                ],
+              })
+
+            subnets = resp.subnets
+
+            case
+            when subnets.count >= 1
+              subnets
+            when subnets.count < 1
+              raise "No subnets found for '#{vpc_id}'."
+            end
+          end
       end
 
       def ami(name, owners=["self"])
