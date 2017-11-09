@@ -1,0 +1,184 @@
+---
+ignition:
+  version: "2.1.0"
+
+
+passwd:
+  users:
+    - name: "admin"
+      passwordHash: "x"
+      sshAuthorizedKeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDlIRM5H4lz/t8PfiGptR8cWqVrD8NCwROZly1XuYooWiIdTinJAvkATdR54ic6YuNenoKOeqtTj0dkytbzi5xItBti6cqzHvFAOXhKzVCsR5n/Mdt2KPbp215pFS96yfsx/24Z4cGygXe24SEXv28KdWZ1nWQyUrlne9jMaB7n3cGzNaXOPy42l03/bAaflWoyD7gyyS9XHDuZkLxVrhtlO43UtIXL4IZzKTCy1cZdaabZxRsrSzHUp+/5p3fHYgcYmwyO0Y+W3TP6LRC2ebeQe0r4Rh1o83sRvcbmuG14Wk7wDVFtu0vjtwOflCsRHGRibep/rXvtqf1/bG3brQ9tAV3oIeZ4r4yPUZenwIfM2pQH3ElD3kqw+Pdh1la1QXb4FDxeEw29nLU1eQF6ggnp3gzJJDRQWRB/I2RjKje5M1NcKjn+8ZBG1PHBikaOkjMRkXzOb8JQxKcWmeuRHo/ZTh7oUDDMObAVej9K91eCP3Dtz5QqmL1+J4+7YCjoBOBPpX3J+mrkxHRHcJYEIyJF6/mNDtov09Vji7Rdd0j1A5CJ2fvcuuUGK0LUHMSEyzLKg830E8b/kIZrufWEsljqlcHrYCJAO/LYl77PFe6B/vNfZtyw4fI6juGDlZNYWYXLJ2c+poCS8+2o1KjCli1lV2BOAjDUKEJxQ9NAw6MxPQ== tom.booth@uswitch.com"
+      groups: ["sudo", "docker"]
+
+
+systemd:
+  units:
+    <% volumes.each { |volume| %>
+    - name: "<%= volume[:name] %>.mount"
+      enabled: true
+      contents: |
+        [Mount]
+        What=<%= volume[:device] %>
+        Where=<%= volume[:mount] %>
+        Type=ext4
+    <% } %>
+    - name: "docker.service"
+      dropins:
+        - name: "01-set-log-driver.conf"
+          contents: |
+            [Service]
+            Environment="DOCKER_OPTS=--log-driver=journald --log-opt labels=logname,team,application"
+
+    - name: "set-hostname.service"
+      enabled: true
+      contents: |
+        [Install]
+        WantedBy=multi-user.target
+
+        [Unit]
+        Description=Sets the hostname of the machine
+        Before=docker.service
+        After=network-online.target coreos-metadata.service
+        Requires=network-online.target coreos-metadata.service
+
+        [Service]
+        EnvironmentFile=/run/metadata/coreos
+        ExecStart=/opt/bin/set-hostname
+        Restart=always
+        RestartSec=30
+
+    - name: "usersync.service"
+      enabled: true
+      contents: |
+        [Install]
+        WantedBy=multi-user.target
+
+        [Unit]
+        Description=AWS user ssh key syncing
+        After=network-online.target
+        Requires=network-online.target
+
+        [Service]
+        ExecStartPre=-/bin/mkdir -p /opt/bin
+        ExecStartPre=-/usr/bin/curl --retry 999 --retry-delay 2 -Lo /opt/bin/usersync https://github.com/uswitch/aws_usersync/releases/download/v1.0.0/aws_usersync
+        ExecStartPre=-/bin/chmod 0775 /opt/bin/usersync
+        ExecStart=/opt/bin/usersync -I="root,core,fleet,systemd-coredump" -o=false -i=5 -g="cloud-team"
+        Restart=always
+        RestartSec=30
+
+    - name: "loglet.service"
+      enabled: true
+      contents: |
+        [Install]
+        WantedBy=multi-user.target
+
+        [Unit]
+        Description=loglet
+        After=network-online.target
+        Requires=network-online.target
+
+        [Service]
+        ExecStartPre=-/bin/mkdir -p /opt/bin
+        ExecStartPre=-/usr/bin/curl --retry 999 --retry-delay 2 -o /opt/bin/loglet https://s3-eu-west-1.amazonaws.com/uswitch-public-tools/loglet/master/12/loglet
+        ExecStartPre=-/bin/chmod 0775 /opt/bin/loglet
+        ExecStart=/opt/bin/loglet \
+          --broker=kafkang.core.uswitchinternal.com:9092 \
+          --topic core-logs \
+          --cursor-file=/var/run/loglet.cursor
+        Restart=always
+        RestartSec=10
+    <% units.each { |unit| %>
+    - name: "<%= unit[:name] %>"
+      enabled: true
+      contents: "<%= unit[:contents].gsub(/\n/, '\\n').gsub(/\"/, '\\"') %>"
+    <% } %>
+
+
+storage:
+  <% if volumes.count > 0 %>
+  filesystems:
+    <% volumes.each { |volume| %>
+    - name: <%= volume[:name] %>
+      mount:
+        device: <%= volume[:device] %>
+        format: ext4
+    <% } %>
+  <% end %>
+  files:
+    <% cas.each { |ca| %>
+    - filesystem: "root"
+      path: "/etc/ssl/<%= ca.name %>/ca.cert"
+      mode: 0400
+      user: { id: 0 }
+      group: { id: 0 }
+      contents:
+        source: <%= ca.source %>
+    <% } %>
+    <% keypairs.each { |keypair| %>
+    - filesystem: "root"
+      path: "/etc/ssl/<%= keypair[:ca].name %>/<%= keypair[:name] %>/cert"
+      mode: 0400
+      user: { id: 0 }
+      group: { id: 0 }
+      contents:
+        source: <%= keypair[:source][:cert] %>
+    - filesystem: "root"
+      path: "/etc/ssl/<%= keypair[:ca].name %>/<%= keypair[:name] %>/key"
+      mode: 0400
+      user: { id: 0 }
+      group: { id: 0 }
+      contents:
+        source: <%= keypair[:source][:key] %>
+    <% } %>
+    <% files.each { |file| %>
+    - filesystem: "root"
+      path: <%= file[:path] %>
+      mode: <%= file[:mode] %>
+      user: { id: 0 }
+      group: { id: 0 }
+      contents: "<%= file[:contents].gsub(/\n/, '\\n').gsub(/\"/, '\\"') %>"
+    <% } %>
+
+    - filesystem: "root"
+      path: "/opt/bin/set-hostname"
+      mode: 0755,
+      user: { id: 0 }
+      group: { id: 0}
+      contents: |
+        #!/bin/bash
+        ec2_host="$(echo ${COREOS_EC2_HOSTNAME} | cut -d'.' -f 1)"
+        echo "${ec2_host}.${COREOS_EC2_REGION}.compute.internal" > /etc/hostname
+        hostnamectl set-hostname "$(cat /etc/hostname)"
+
+    - filesystem: "root"
+      path: "/etc/systemd/journald.conf"
+      mode: 0644,
+      user: { id: 0 }
+      group: { id: 0}
+      contents: |
+        [Journal]
+        RateLimitInterval=0
+        RateLimitBurst=0
+        TTYPath=/dev/null
+        ForwardToConsole=no
+        ForwardToWall=no
+        ForwardToSyslog=no
+        ForwardToKMsg=no
+
+    - filesystem: "root"
+      path: "/etc/motd.d/uswitch.conf"
+      mode: 0644,
+      user: { id: 0 }
+      group: { id: 0}
+      contents: |
+
+          $$$$$        $$$$$
+          $$$$$        $$$$$
+          $$$$$        $$$$$
+          $$$$$        $$$$$
+          $$$$$        $$$$$
+          $$$$$     .  $$$$$
+          $$$$$.   .$a $$$$$
+          `$$$$$$aaaPIL. $$$
+          ^$$$$$$$'$$^ $$$$.
