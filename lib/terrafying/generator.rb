@@ -27,10 +27,6 @@ module Terrafying
       @aws ||= Terrafying::Aws::Ops.new
     end
 
-    def generate(&block)
-      instance_eval(&block)
-    end
-
     def provider(name, spec)
       @output["provider"][name] = spec
     end
@@ -90,6 +86,18 @@ module Terrafying
 
   end
 
-  Generator = Context.new
+  class DSLContext < Context
+
+    def generate(&block)
+      instance_eval(&block)
+    end
+
+    def method_missing(fn, *args)
+      resource(fn, args.shift.to_s, args.first)
+    end
+
+  end
+
+  Generator = DSLContext.new
 
 end
