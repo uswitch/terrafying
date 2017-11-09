@@ -22,7 +22,10 @@ module Terrafying
     def initialize(path, options)
       @path = File.expand_path(path)
       @options = options
-      @scope = scope_for_path(@path)
+      @scope = options[:scope] || scope_for_path(@path)
+
+      puts "Scope: #{@scope}"
+
       load(path)
     end
 

@@ -12,6 +12,7 @@ module Terrafying
         @ec2_resource = ::Aws::EC2::Resource.new
         @ec2_client = ::Aws::EC2::Client.new
         @route53_client = ::Aws::Route53::Client.new
+        @s3_client = ::Aws::S3::Client.new
       end
 
       def security_group(name)
@@ -212,6 +213,15 @@ module Terrafying
             when hosted_zones.count > 1
               raise "More than one hosted zone with name '#{fqdn}' was found: " + hosted_zones.join(', ')
             end
+          end
+      end
+
+      def s3_object(bucket, key)
+        @s3_objects ||= {}
+        @s3_objects["#{bucket}-#{key}"] ||=
+          begin
+            resp = @s3_client.get_object({ bucket: bucket, key: key })
+            resp.body.read
           end
       end
     end

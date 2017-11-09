@@ -5,6 +5,7 @@ module Terrafying
     class_option :no_lock, :type => :boolean, :default => false
     class_option :keep, :type => :boolean, :default => false
     class_option :target, :type => :string, :default => nil
+    class_option :scope, :type => :string, :default => nil
 
     desc "list PATH", "List resources defined"
     def list(path)
