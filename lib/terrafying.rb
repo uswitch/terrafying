@@ -226,7 +226,6 @@ module Terrafying
       end
       unless $? == 0
         STDERR.puts "***** ERROR: Unable to execute terraform command *****"
-        exit($?)
       end
     end
 
