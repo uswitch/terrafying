@@ -224,9 +224,9 @@ module Terrafying
           puts line.gsub('\n', "\n").gsub('\\"', "\"")
         end
       end
-      unless $? == 0
+      if $?.exited?
         STDERR.puts "***** ERROR: Unable to execute terraform command *****"
-        exit($?)
+        exit($?.exitstatus)
       end
     end
 
