@@ -224,11 +224,6 @@ module Terrafying
           puts line.gsub('\n', "\n").gsub('\\"', "\"")
         end
       end
-      
-      unless $?.success?
-        STDERR.puts "***** ERROR: Unable to execute terraform command *****"
-        exit($?.exitstatus)
-      end
     end
 
     # Cross-platform way of finding an executable in the $PATH.
