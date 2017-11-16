@@ -8,10 +8,11 @@ require 'terrafying/generator'
 module Terrafying
 
   module Components
+    DEFAULT_SSH_GROUP = 'cloud-team'
 
     class VPC < Terrafying::Context
 
-      attr_reader :id, :name, :cidr, :zone, :azs, :private_subnets, :public_subnets, :internal_ssh_security_group
+      attr_reader :id, :name, :cidr, :zone, :azs, :private_subnets, :public_subnets, :internal_ssh_security_group, :ssh_group
 
       def self.find(name)
         VPC.new.find name
@@ -39,6 +40,12 @@ module Terrafying
         @zone = "find vpc dns zone by the tag"
         @public_subnets = subnets.select { |s| s.public }
         @private_subnets = subnets.select { |s| !s.public }
+        tags = vpc.tags.select { |tag| tag.key = "ssh_group"}
+        if tags.count > 0
+          @ssh_group = tags[0]
+        else
+          @ssh_group = DEFAULT_SSH_GROUP
+        end
         self
       end
 
@@ -48,12 +55,14 @@ module Terrafying
           nat_eips: [],
           azs: aws.availability_zones,
           tags: {},
+          ssh_group: DEFAULT_SSH_GROUP,
         }.merge(options)
 
         @name = name
         @cidr = raw_cidr
         @azs = options[:azs]
         @tags = options[:tags]
+        @ssh_group = options[:ssh_group]
 
         cidr = NetAddr::CIDR.create(raw_cidr)
 
@@ -78,7 +87,7 @@ module Terrafying
         @id = resource :aws_vpc, name, {
                          cidr_block: cidr.to_s,
                          enable_dns_hostnames: true,
-                         tags: { Name: name }.merge(@tags),
+                         tags: { Name: name, ssh_group: @ssh_group }.merge(@tags),
                        }
 
         dhcp = resource :aws_vpc_dhcp_options, name, {

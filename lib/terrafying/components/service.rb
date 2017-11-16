@@ -60,6 +60,7 @@ module Terrafying
           units: [],
           files: [],
           tags: {},
+          ssh_group: vpc.ssh_group,
         }.merge(options)
 
         if ! options.has_key? :user_data
@@ -72,6 +73,7 @@ module Terrafying
         @fqdn = options[:zone].qualify(name)
         @instance_fqdns = []
         @ports = enrich_ports(options[:ports])
+        @ssh_group = options[:ssh_group]
 
         if options[:subnets]
           subnets = options[:subnets]
@@ -338,6 +340,7 @@ module Terrafying
           keypairs: [],
           volumes: [],
           units: [],
+          ssh_group: @ssh_group,
         }.merge(options)
 
         options[:cas] = options[:keypairs].map { |kp| kp[:ca] }.sort.uniq

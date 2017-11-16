@@ -63,31 +63,10 @@ systemd:
         ExecStartPre=-/bin/mkdir -p /opt/bin
         ExecStartPre=-/usr/bin/curl --retry 999 --retry-delay 2 -Lo /opt/bin/usersync https://github.com/uswitch/aws_usersync/releases/download/v1.0.0/aws_usersync
         ExecStartPre=-/bin/chmod 0775 /opt/bin/usersync
-        ExecStart=/opt/bin/usersync -I="root,core,fleet,systemd-coredump" -o=false -i=5 -g="cloud-team"
+        ExecStart=/opt/bin/usersync -I="root,core,fleet,systemd-coredump" -o=false -i=5 -g="<%= ssh_group %>"
         Restart=always
         RestartSec=30
 
-    - name: "loglet.service"
-      enabled: true
-      contents: |
-        [Install]
-        WantedBy=multi-user.target
-
-        [Unit]
-        Description=loglet
-        After=network-online.target
-        Requires=network-online.target
-
-        [Service]
-        ExecStartPre=-/bin/mkdir -p /opt/bin
-        ExecStartPre=-/usr/bin/curl --retry 999 --retry-delay 2 -o /opt/bin/loglet https://s3-eu-west-1.amazonaws.com/uswitch-public-tools/loglet/master/12/loglet
-        ExecStartPre=-/bin/chmod 0775 /opt/bin/loglet
-        ExecStart=/opt/bin/loglet \
-          --broker=kafkang.core.uswitchinternal.com:9092 \
-          --topic core-logs \
-          --cursor-file=/var/run/loglet.cursor
-        Restart=always
-        RestartSec=10
     <% units.each { |unit| %>
     - name: "<%= unit[:name] %>"
       enabled: true
