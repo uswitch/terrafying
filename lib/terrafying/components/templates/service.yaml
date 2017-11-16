@@ -11,7 +11,6 @@ passwd:
         - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDlIRM5H4lz/t8PfiGptR8cWqVrD8NCwROZly1XuYooWiIdTinJAvkATdR54ic6YuNenoKOeqtTj0dkytbzi5xItBti6cqzHvFAOXhKzVCsR5n/Mdt2KPbp215pFS96yfsx/24Z4cGygXe24SEXv28KdWZ1nWQyUrlne9jMaB7n3cGzNaXOPy42l03/bAaflWoyD7gyyS9XHDuZkLxVrhtlO43UtIXL4IZzKTCy1cZdaabZxRsrSzHUp+/5p3fHYgcYmwyO0Y+W3TP6LRC2ebeQe0r4Rh1o83sRvcbmuG14Wk7wDVFtu0vjtwOflCsRHGRibep/rXvtqf1/bG3brQ9tAV3oIeZ4r4yPUZenwIfM2pQH3ElD3kqw+Pdh1la1QXb4FDxeEw29nLU1eQF6ggnp3gzJJDRQWRB/I2RjKje5M1NcKjn+8ZBG1PHBikaOkjMRkXzOb8JQxKcWmeuRHo/ZTh7oUDDMObAVej9K91eCP3Dtz5QqmL1+J4+7YCjoBOBPpX3J+mrkxHRHcJYEIyJF6/mNDtov09Vji7Rdd0j1A5CJ2fvcuuUGK0LUHMSEyzLKg830E8b/kIZrufWEsljqlcHrYCJAO/LYl77PFe6B/vNfZtyw4fI6juGDlZNYWYXLJ2c+poCS8+2o1KjCli1lV2BOAjDUKEJxQ9NAw6MxPQ== tom.booth@uswitch.com"
       groups: ["sudo", "docker"]
 
-
 systemd:
   units:
     <% volumes.each { |volume| %>
@@ -23,12 +22,6 @@ systemd:
         Where=<%= volume[:mount] %>
         Type=ext4
     <% } %>
-    - name: "docker.service"
-      dropins:
-        - name: "01-set-log-driver.conf"
-          contents: |
-            [Service]
-            Environment="DOCKER_OPTS=--log-driver=journald --log-opt labels=logname,team,application"
 
     - name: "set-hostname.service"
       enabled: true
@@ -129,21 +122,6 @@ storage:
         ec2_host="$(echo ${COREOS_EC2_HOSTNAME} | cut -d'.' -f 1)"
         echo "${ec2_host}.${COREOS_EC2_REGION}.compute.internal" > /etc/hostname
         hostnamectl set-hostname "$(cat /etc/hostname)"
-
-    - filesystem: "root"
-      path: "/etc/systemd/journald.conf"
-      mode: 0644,
-      user: { id: 0 }
-      group: { id: 0}
-      contents: |
-        [Journal]
-        RateLimitInterval=0
-        RateLimitBurst=0
-        TTYPath=/dev/null
-        ForwardToConsole=no
-        ForwardToWall=no
-        ForwardToSyslog=no
-        ForwardToKMsg=no
 
     - filesystem: "root"
       path: "/etc/motd.d/uswitch.conf"

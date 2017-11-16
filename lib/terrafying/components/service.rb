@@ -239,7 +239,6 @@ module Terrafying
 
           instances = options[:instances].map.with_index {|config, i|
             instance_ident = "#{ident}-#{i}"
-            instance_addons = {}
 
             if config.has_key? :subnet and config.has_key? :ip_address
               subnet = config[:subnet]
