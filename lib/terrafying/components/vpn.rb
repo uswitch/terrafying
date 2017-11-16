@@ -112,7 +112,7 @@ ExecStart=/usr/bin/docker run --name openvpn-authz \
 -v /etc/ssl/openvpn:/etc/ssl/openvpn \
 -v /var/openvpn-authz:/var/openvpn-authz \
 -p 443:443/tcp \
-registry.usw.co/cloud/openvpn-authz:latest \
+quay.io/uswitch/openvpn-authz:latest \
 --fqdn #{@fqdn} \
 --cache /var/openvpn-authz \
 /etc/ssl/openvpn
