@@ -61,8 +61,8 @@ module Terrafying
         @service.instance_security_group
       end
 
-      def used_by_cidr(cidr)
-        @service.used_by_cidr(cidr)
+      def used_by_cidr(*cidrs)
+        @service.used_by_cidr(*cidrs)
       end
 
       def openvpn_service
