@@ -1,4 +1,5 @@
 
+require 'digest'
 require 'xxhash'
 require 'terrafying/generator'
 require 'terrafying/util'
@@ -276,16 +277,26 @@ module Terrafying
                                      },
                                    }.merge(ip_address ? { private_ip: ip_address } : {}).merge(lifecycle)
 
-            if config.has_key? :volumes
-              config[:volumes].each.with_index { |volume, vol_i|
-                resource :aws_volume_attachment, "#{instance_ident}-#{vol_i}", {
-                           device_name: volume[:device],
-                           volume_id: volume[:volume].id,
-                           instance_id: instance_id,
-                           force_detach: true,
-                         }
-              }
-            end
+            options[:volumes].each.with_index { |volume, vol_i|
+              volume_name = "#{instance_ident}-#{vol_i}"
+              volume_id = resource :aws_ebs_volume, volume_name, {
+                                     availability_zone: subnet.az,
+                                     size: volume[:size],
+                                     type: volume.fetch(:type, "gp2"),
+                                     tags: {
+                                       Name: volume_name,
+                                     }.merge(options[:tags]),
+                                   }
+
+              volume[:device] = "/dev/#{Digest::SHA256.hexdigest(volume[:mount])[0..8]}"
+
+              resource :aws_volume_attachment, volume_name, {
+                         device_name: volume[:device],
+                         volume_id: volume_id,
+                         instance_id: instance_id,
+                         force_detach: true,
+                       }
+            }
 
             @instance_fqdns.push(options[:zone].qualify("#{name}-#{i}"))
             options[:zone].add_record(
