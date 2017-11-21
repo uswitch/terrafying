@@ -288,8 +288,6 @@ module Terrafying
                                      }.merge(options[:tags]),
                                    }
 
-              volume[:device] = "/dev/#{Digest::SHA256.hexdigest(volume[:mount])[0..8]}"
-
               resource :aws_volume_attachment, volume_name, {
                          device_name: volume[:device],
                          volume_id: volume_id,
