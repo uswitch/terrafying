@@ -60,6 +60,7 @@ module Terrafying
           units: [],
           files: [],
           tags: {},
+          ssh_group: vpc.ssh_group,
         }.merge(options)
 
         if ! options.has_key? :user_data
@@ -72,6 +73,7 @@ module Terrafying
         @fqdn = options[:zone].qualify(name)
         @instance_fqdns = []
         @ports = enrich_ports(options[:ports])
+        @ssh_group = options[:ssh_group]
 
         if options[:subnets]
           subnets = options[:subnets]
@@ -237,7 +239,6 @@ module Terrafying
 
           instances = options[:instances].map.with_index {|config, i|
             instance_ident = "#{ident}-#{i}"
-            instance_addons = {}
 
             if config.has_key? :subnet and config.has_key? :ip_address
               subnet = config[:subnet]
@@ -338,6 +339,7 @@ module Terrafying
           keypairs: [],
           volumes: [],
           units: [],
+          ssh_group: @ssh_group,
         }.merge(options)
 
         options[:cas] = options[:keypairs].map { |kp| kp[:ca] }.sort.uniq
@@ -360,18 +362,20 @@ module Terrafying
         }
       end
 
-      def used_by_cidr(cidr)
-        cidr_ident = cidr.gsub(/[\.\/]/, "-")
+      def used_by_cidr(*cidrs)
+        cidrs.map { |cidr|
+          cidr_ident = cidr.gsub(/[\.\/]/, "-")
 
-        @ports.map {|port|
-          resource :aws_security_group_rule, "#{@name}-to-#{cidr_ident}-#{port[:name]}", {
-                     security_group_id: @access_security_group,
-                     type: "ingress",
-                     from_port: port[:number],
-                     to_port: port[:number],
-                     protocol: port[:type],
-                     cidr_blocks: [cidr],
-                   }
+          @ports.map {|port|
+            resource :aws_security_group_rule, "#{@name}-to-#{cidr_ident}-#{port[:name]}", {
+                       security_group_id: @access_security_group,
+                       type: "ingress",
+                       from_port: port[:number],
+                       to_port: port[:number],
+                       protocol: port[:type],
+                       cidr_blocks: [cidr],
+                     }
+          }
         }
       end
 
