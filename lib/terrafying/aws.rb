@@ -315,6 +315,15 @@ module Terrafying
             resp.body.read
           end
       end
+
+      def list_objects(bucket)
+        @list_objects ||= {}
+        @list_objects[bucket] ||=
+          begin
+            resp = @s3_client.list_objects_v2({ bucket: bucket })
+            resp.contents
+          end
+      end
     end
 
     def aws
