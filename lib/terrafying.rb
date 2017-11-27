@@ -39,39 +39,47 @@ module Terrafying
     end
 
     def plan
+      exit_code = 1
       with_config do
         with_state(mode: :read) do
-          exec_with_optional_target 'plan'
+          exit_code = exec_with_optional_target 'plan'
         end
       end
+      exit_code
     end
 
     def graph
+      exit_code = 1
       with_config do
         with_state(mode: :read) do
-          exec_with_optional_target 'graph'
+          exit_code = exec_with_optional_target 'graph'
         end
       end
+      exit_code
     end
 
     def apply
+      exit_code = 1
       with_config do
         with_lock do
           with_state(mode: :update) do
-            exec_with_optional_target "apply -backup=- #{@dir}"
+            exit_code = exec_with_optional_target "apply -backup=- #{@dir}"
           end
         end
       end
+      exit_code
     end
 
     def destroy
+      exit_code = 1
       with_config do
         with_lock do
           with_state(mode: :update) do
-            stream_command("terraform destroy -backup=- #{@dir}")
+            exit_code = stream_command("terraform destroy -backup=- #{@dir}")
           end
         end
       end
+      exit_code
     end
 
     def show_state
@@ -100,13 +108,15 @@ module Terrafying
     end
 
     def import(addr, id)
+      exit_code = 1
       with_config do
         with_lock do
           with_state(mode: :update) do
-            exec_with_optional_target "import  -backup=- #{@dir} #{addr} #{id}"
+            exit_code = exec_with_optional_target "import  -backup=- #{@dir} #{addr} #{id}"
           end
         end
       end
+      exit_code
     end
 
     private
@@ -224,6 +234,7 @@ module Terrafying
           puts line.gsub('\n', "\n").gsub('\\"', "\"")
         end
       end
+      return $?
     end
 
     # Cross-platform way of finding an executable in the $PATH.
