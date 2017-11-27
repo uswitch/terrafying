@@ -234,7 +234,7 @@ module Terrafying
           puts line.gsub('\n', "\n").gsub('\\"', "\"")
         end
       end
-      return $?
+      return $?.exitstatus
     end
 
     # Cross-platform way of finding an executable in the $PATH.
