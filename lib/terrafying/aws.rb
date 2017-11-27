@@ -307,6 +307,28 @@ module Terrafying
           end
       end
 
+      def hosted_zone_by_tag(tag)
+        @hosted_zones ||= {}
+        @hosted_zones[tag] ||=
+          begin
+            STDERR.puts "looking for a hosted zone with tag '#{tag}'"
+            hosted_zones = @route53_client.list_hosted_zones().hosted_zones.select { |zone|
+              tags = @route53_client.list_tags_for_resource({resource_type: "hostedzone", resource_id: zone.id.split('/')[2]}).resource_tag_set.tags.select { |aws_tag|
+                tag.keys.each { |key| String(key) == aws_tag.key && tag[key] == aws_tag.value }
+              }
+              tags.any?
+            }
+            case
+            when hosted_zones.count == 1
+              hosted_zones.first
+            when hosted_zones.count < 1
+              raise "No hosted zone with tag '#{tag}' was found."
+            when hosted_zones.count > 1
+              raise "More than one hosted zone with tag '#{tag}' was found: " + hosted_zones.join(', ')
+            end
+          end
+      end
+
       def s3_object(bucket, key)
         @s3_objects ||= {}
         @s3_objects["#{bucket}-#{key}"] ||=

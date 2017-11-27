@@ -37,7 +37,10 @@ module Terrafying
         @name = name
         @id = vpc.vpc_id
         @cidr = vpc.cidr_block
-        @zone = "find vpc dns zone by the tag"
+        @zone = Terrafying::Components::Zone.find_by_tag({vpc: @id})
+        if @zone
+          raise "Failed to find zone"
+        end
         @public_subnets = subnets.select { |s| s.public }
         @private_subnets = subnets.select { |s| !s.public }
         tags = vpc.tags.select { |tag| tag.key = "ssh_group"}
@@ -79,16 +82,16 @@ module Terrafying
         @remaining_ip_space = NetAddr::Tree.new
         @remaining_ip_space.add! cidr
 
-        @zone = add! Terrafying::Components::Zone.create("#{name}.#{parent_zone.fqdn}", {
-                                                           parent_zone: parent_zone,
-                                                           tags: { vpc: @id }.merge(@tags),
-                                                         })
-
         @id = resource :aws_vpc, name, {
                          cidr_block: cidr.to_s,
                          enable_dns_hostnames: true,
                          tags: { Name: name, ssh_group: @ssh_group }.merge(@tags),
                        }
+
+        @zone = add! Terrafying::Components::Zone.create("#{name}.#{parent_zone.fqdn}", {
+                                                           parent_zone: parent_zone,
+                                                           tags: { vpc: @id }.merge(@tags),
+                                                         })
 
         dhcp = resource :aws_vpc_dhcp_options, name, {
                           domain_name: @zone.fqdn,
