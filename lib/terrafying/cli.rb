@@ -17,24 +17,24 @@ module Terrafying
 
     desc "plan PATH", "Show execution plan"
     def plan(path)
-      Config.new(path, options).plan
+      exit Config.new(path, options).plan
     end
 
     desc "graph PATH", "Show execution graph"
     def graph(path)
-      Config.new(path, options).graph
+      exit Config.new(path, options).graph
     end
 
     desc "apply PATH", "Apply changes to resources"
     option :force, :aliases => ['f'], :type => :boolean, :desc => "Forcefully remove any pending locks"
     def apply(path)
-      Config.new(path, options).apply
+      exit Config.new(path, options).apply
     end
 
     desc "destroy PATH", "Destroy resources"
     option :force, :aliases => ['f'], :type => :boolean, :desc => "Forcefully remove any pending locks"
     def destroy(path)
-      Config.new(path, options).destroy
+      exit Config.new(path, options).destroy
     end
 
     desc "json PATH", "Show terraform JSON"
@@ -59,7 +59,7 @@ module Terrafying
 
     desc "import PATH ADDR ID", "Import existing infrastructure into your Terraform state"
     def import(path, addr, id)
-      Config.new(path, options).import(addr, id)
+      exit Config.new(path, options).import(addr, id)
     end
 
   end
