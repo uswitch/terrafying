@@ -314,7 +314,7 @@ module Terrafying
             STDERR.puts "looking for a hosted zone with tag '#{tag}'"
             hosted_zones = @route53_client.list_hosted_zones().hosted_zones.select { |zone|
               tags = @route53_client.list_tags_for_resource({resource_type: "hostedzone", resource_id: zone.id.split('/')[2]}).resource_tag_set.tags.select { |aws_tag|
-                tag.keys.each { |key| String(key) == aws_tag.key && tag[key] == aws_tag.value }
+                tag.keys.any? { |key| String(key) == aws_tag.key && tag[key] == aws_tag.value }
               }
               tags.any?
             }
