@@ -37,7 +37,10 @@ module Terrafying
         @name = name
         @id = vpc.vpc_id
         @cidr = vpc.cidr_block
-        @zone = "find vpc dns zone by the tag"
+        @zone = Terrafying::Components::Zone.find_by_tag({vpc: @id})
+        if @zone
+          raise "Failed to find zone"
+        end
         @public_subnets = subnets.select { |s| s.public }
         @private_subnets = subnets.select { |s| !s.public }
         tags = vpc.tags.select { |tag| tag.key = "ssh_group"}

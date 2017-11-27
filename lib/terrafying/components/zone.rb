@@ -1,5 +1,3 @@
-
-
 require 'terrafying/generator'
 
 module Terrafying
@@ -12,6 +10,10 @@ module Terrafying
 
       def self.find(fqdn)
         Zone.new.find fqdn
+      end
+
+      def self.find_by_tag(tag)
+        Zone.new.find_by_tag tag
       end
 
       def self.create(fqdn, options={})
@@ -28,6 +30,14 @@ module Terrafying
 
         @id = zone.id
         @fqdn = fqdn
+
+        self
+      end
+
+      def find_by_tag(tag)
+        zone = aws.hosted_zone_by_tag(tag)
+        @id = zone.id
+        @fqdn = zone.name
 
         self
       end
