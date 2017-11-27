@@ -79,16 +79,16 @@ module Terrafying
         @remaining_ip_space = NetAddr::Tree.new
         @remaining_ip_space.add! cidr
 
-        @zone = add! Terrafying::Components::Zone.create("#{name}.#{parent_zone.fqdn}", {
-                                                           parent_zone: parent_zone,
-                                                           tags: { vpc: @id }.merge(@tags),
-                                                         })
-
         @id = resource :aws_vpc, name, {
                          cidr_block: cidr.to_s,
                          enable_dns_hostnames: true,
                          tags: { Name: name, ssh_group: @ssh_group }.merge(@tags),
                        }
+
+        @zone = add! Terrafying::Components::Zone.create("#{name}.#{parent_zone.fqdn}", {
+                                                           parent_zone: parent_zone,
+                                                           tags: { vpc: @id }.merge(@tags),
+                                                         })
 
         dhcp = resource :aws_vpc_dhcp_options, name, {
                           domain_name: @zone.fqdn,
