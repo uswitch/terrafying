@@ -38,7 +38,7 @@ module Terrafying
         @id = vpc.vpc_id
         @cidr = vpc.cidr_block
         @zone = Terrafying::Components::Zone.find_by_tag({vpc: @id})
-        if @zone
+        if @zone.nil?
           raise "Failed to find zone"
         end
         @public_subnets = subnets.select { |s| s.public }
