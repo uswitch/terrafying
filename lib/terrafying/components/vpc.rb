@@ -49,6 +49,7 @@ module Terrafying
         else
           @ssh_group = DEFAULT_SSH_GROUP
         end
+        @internal_ssh_security_group = aws.security_group("#{name}-internal-ssh")
         self
       end
 
