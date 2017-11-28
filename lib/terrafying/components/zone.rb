@@ -37,7 +37,7 @@ module Terrafying
       def find_by_tag(tag)
         zone = aws.hosted_zone_by_tag(tag)
         @id = zone.id
-        @fqdn = zone.name
+        @fqdn = zone.name.chomp(".")
 
         self
       end
