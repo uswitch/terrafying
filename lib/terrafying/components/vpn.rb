@@ -28,20 +28,21 @@ module Terrafying
 
       attr_reader :name, :cidr
 
-      def self.create_in(vpc, name, options={})
-        VPN.new.create_in vpc, name, options
+      def self.create_in(vpc, name, clientid, clientsecret, options={})
+        VPN.new.create_in vpc, name, clientid, clientsecret, options
       end
 
       def initialize()
         super
       end
 
-      def create_in(vpc, name, options={})
+      def create_in(vpc, name, clientid, clientsecret, options={})
         options = {
           cidr: "10.8.0.0/24",
           tags: {}
         }.merge(options)
-
+        @clientid = clientid
+        @clientsecret = clientsecret
         @name = name
         @vpc = vpc
         @cidr = options[:cidr]
@@ -115,6 +116,8 @@ ExecStart=/usr/bin/docker run --name openvpn-authz \
 quay.io/uswitch/openvpn-authz:latest \
 --fqdn #{@fqdn} \
 --cache /var/openvpn-authz \
+--clientid #{@clientid} \
+--clientsecret #{@clientsecret} \
 /etc/ssl/openvpn
 Restart=always
 RestartSec=30
