@@ -71,8 +71,12 @@ module Terrafying
       end
 
       def add_record(name, records)
+        add_record_in(self, name,records)
+      end
+
+      def add_record_in(ctx, name,records)
         fqdn = qualify(name)
-        resource :aws_route53_record, fqdn.gsub(/\./, "-"), {
+        ctx.resource :aws_route53_record, fqdn.gsub(/\./, "-"), {
                    zone_id: @id,
                    name: fqdn,
                    type: "A",

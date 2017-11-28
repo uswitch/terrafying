@@ -298,13 +298,15 @@ module Terrafying
             }
 
             @instance_fqdns.push(options[:zone].qualify("#{name}-#{i}"))
-            options[:zone].add_record(
+            options[:zone].add_record_in(
+              self,
               "#{name}-#{i}",
               [output_of(:aws_instance, instance_ident, instance_ip)],
             )
           }
 
-          options[:zone].add_record(
+          options[:zone].add_record_in(
+            self,
             name,
             instances.map.with_index {|_, i| output_of(:aws_instance, "#{ident}-#{i}", instance_ip) },
           )
