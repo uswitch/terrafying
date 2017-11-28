@@ -43,9 +43,9 @@ module Terrafying
         end
         @public_subnets = subnets.select { |s| s.public }
         @private_subnets = subnets.select { |s| !s.public }
-        tags = vpc.tags.select { |tag| tag.key = "ssh_group"}
+        tags = vpc.tags.select { |tag| tag.key == "ssh_group"}
         if tags.count > 0
-          @ssh_group = tags[0]
+          @ssh_group = tags[0].value
         else
           @ssh_group = DEFAULT_SSH_GROUP
         end
