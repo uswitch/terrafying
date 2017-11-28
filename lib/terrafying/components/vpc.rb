@@ -38,7 +38,7 @@ module Terrafying
         @id = vpc.vpc_id
         @cidr = vpc.cidr_block
         @zone = Terrafying::Components::Zone.find_by_tag({vpc: @id})
-        if @zone
+        if @zone.nil?
           raise "Failed to find zone"
         end
         @public_subnets = subnets.select { |s| s.public }
@@ -49,6 +49,7 @@ module Terrafying
         else
           @ssh_group = DEFAULT_SSH_GROUP
         end
+        @internal_ssh_security_group = aws.security_group("#{name}-internal-ssh")
         self
       end
 
