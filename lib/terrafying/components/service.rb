@@ -135,7 +135,7 @@ module Terrafying
                  }
         instance_profile = resource :aws_iam_instance_profile, ident, {
                                       name: ident,
-                                      role: output_of(:aws_iam_role, ident, :name)
+                                      role: output_of(:aws_iam_role, ident, :name),
                                     }
 
 
@@ -217,6 +217,9 @@ module Terrafying
                                      lifecycle: {
                                        create_before_destroy: true,
                                      },
+                                     depends_on: [
+                                       "aws_iam_instance_profile.#{ident}",
+                                     ],
                                    }
 
           resource :aws_autoscaling_group, ident, {
