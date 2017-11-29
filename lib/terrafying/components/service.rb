@@ -61,6 +61,8 @@ module Terrafying
           files: [],
           tags: {},
           ssh_group: vpc.ssh_group,
+          subnets: nil,
+          pivot: false,
         }.merge(options)
 
         if ! options.has_key? :user_data
@@ -222,17 +224,39 @@ module Terrafying
                                      ],
                                    }
 
-          resource :aws_autoscaling_group, ident, {
-                     name: ident,
-                     launch_configuration: launch_config,
-                     min_size: options[:instances][:min],
-                     max_size: options[:instances][:max],
-                     desired_capacity: options[:instances][:desired],
-                     vpc_zone_identifier: subnets.map(&:id),
-                     tags: options[:tags].map { |k,v|
-                       { key: k, value: v, propagate_at_launch: true }
-                     } + [{ key: "Name", value: ident, propagate_at_launch: true }],
-                   }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
+          if options[:pivot]
+            @ids = subnets.map.with_index { |subnet, i|
+              resource :aws_autoscaling_group, "#{ident}-#{i}", {
+                         name: "#{ident}-#{i}",
+                         launch_configuration: launch_config,
+                         min_size: options[:instances][:min],
+                         max_size: options[:instances][:max],
+                         desired_capacity: options[:instances][:desired],
+                         vpc_zone_identifier: [subnet.id],
+                         tags: {
+                           Name: ident,
+                           service_name: name,
+                         }.merge(options[:tags]).map { |k,v|
+                           { key: k, value: v, propagate_at_launch: true }
+                         },
+                       }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
+            }
+          else
+            resource :aws_autoscaling_group, ident, {
+                       name: ident,
+                       launch_configuration: launch_config,
+                       min_size: options[:instances][:min],
+                       max_size: options[:instances][:max],
+                       desired_capacity: options[:instances][:desired],
+                       vpc_zone_identifier: subnets.map(&:id),
+                       tags: {
+                         Name: ident,
+                         service_name: name,
+                       }.merge(options[:tags]).map { |k,v|
+                         { key: k, value: v, propagate_at_launch: true }
+                       },
+                     }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
+          end
 
         elsif options[:instances].is_a?(Array)
 
