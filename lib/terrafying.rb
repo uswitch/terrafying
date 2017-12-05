@@ -63,7 +63,7 @@ module Terrafying
       with_config do
         with_lock do
           with_state(mode: :update) do
-            exit_code = exec_with_optional_target "apply -backup=- #{@dir}"
+            exit_code = exec_with_optional_target "apply -auto-approve -backup=- #{@dir}"
           end
         end
       end
