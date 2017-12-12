@@ -231,7 +231,7 @@ module Terrafying
                      vpc_zone_identifier: subnets.map(&:id),
                      tags: options[:tags].map { |k,v|
                        { key: k, value: v, propagate_at_launch: true }
-                     },
+                     } + [{ key: "Name", value: ident, propagate_at_launch: true }],
                    }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
 
         elsif options[:instances].is_a?(Array)
