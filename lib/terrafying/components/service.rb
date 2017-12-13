@@ -19,7 +19,7 @@ def enrich_ports(ports)
 
     port = {
       type: "tcp",
-      name: PORT_NAMES.fetch(port[:number], port[:number].to_s)
+      name: PORT_NAMES.fetch(port[:number], port[:number].to_s),
     }.merge(port)
 
     port
@@ -144,41 +144,17 @@ module Terrafying
         if options[:instances].is_a?(Hash)
 
           if @ports.count > 0
-            load_balancer = resource :aws_elb, ident, {
-                                       name: "service-#{ident}",
-                                       internal: !options[:public],
-                                       security_groups: [@access_security_group],
-                                       subnets: subnets.map(&:id),
-                                       tags: options[:tags],
-                                       cross_zone_load_balancing: true,
-                                       idle_timeout: 400,
-                                       connection_draining: true,
-                                       connection_draining_timeout: 400,
-                                       listener: @ports.map { |port|
-                                         {
-                                           instance_port: port[:number],
-                                           instance_protocol: port[:type],
-                                           lb_port: port[:number],
-                                           lb_protocol: port[:type],
-                                         }.merge((port.has_key? :ssl_certificate) ? { ssl_certificate_id: port[:ssl_certificate] } : {})
-                                       },
-                                     }
+            l4_ports = @ports.select { |p| p[:type] == "tcp" }
+            l7_ports = @ports.select { |p| p[:type] == "http" || p[:type] == "https" }
+
+            target_groups = []
+
 
             @instance_security_group = resource :aws_security_group, "asg-#{ident}", {
                                                   name: "asg-#{ident}",
                                                   description: "Describe the ingress and egress of the service asg #{ident}",
                                                   tags: options[:tags],
                                                   vpc_id: vpc.id,
-                                                  ingress: @ports.map {|port|
-                                                    {
-                                                      from_port: port[:number],
-                                                      to_port: port[:number],
-                                                      protocol: port[:type],
-                                                      security_groups: [
-                                                        @access_security_group,
-                                                      ],
-                                                    }
-                                                  },
                                                   egress: [
                                                     {
                                                       from_port: 0,
@@ -189,14 +165,119 @@ module Terrafying
                                                   ],
                                                 }
 
-            options[:zone].add_alias(
-              name,
-              {
-                name: output_of(:aws_elb, ident, :dns_name),
-                zone_id: output_of(:aws_elb, ident, :zone_id),
-                evaluate_target_health: true,
-              },
-            )
+
+            if l4_ports.count > 0
+              network_load_balancer = resource :aws_lb, "nlb-#{ident}", {
+                                                 name: "nlb-#{ident}",
+                                                 load_balancer_type: "network",
+                                                 internal: !options[:public],
+                                                 subnets: subnets.map(&:id),
+                                                 tags: options[:tags],
+                                               }
+
+              l4_ports.each { |l4_port|
+                port_ident = "nlb-#{ident}-#{l4_port[:type]}-#{l4_port[:number]}"
+                target_group = resource :aws_lb_target_group, port_ident, {
+                                          name: port_ident,
+                                          port: l4_port[:number],
+                                          protocol: l4_port[:type].upcase,
+                                          vpc_id: vpc.id,
+                                        }.merge(l4_port.has_key?(:health_check) ? { health_check: l4_port[:health_check] }: {})
+
+                resource :aws_security_group_rule, port_ident, {
+                           security_group_id: @instance_security_group,
+                           type: "ingress",
+                           from_port: l4_port[:number],
+                           to_port: l4_port[:number],
+                           protocol: l4_port[:type],
+                           cidr_blocks: [ vpc.cidr ], # until we can get the ips for the nlb it has to be all vpc
+                         }
+
+                resource :aws_lb_listener, port_ident, {
+                           load_balancer_arn: network_load_balancer,
+                           port: l4_port[:number],
+                           protocol: l4_port[:type].upcase,
+                           default_action: {
+                             target_group_arn: target_group,
+                             type: "forward",
+                           },
+                         }
+
+                target_groups << target_group
+              }
+            end
+
+            if l7_ports.count > 0
+              application_load_balancer = resource :aws_lb, "alb-#{ident}", {
+                                                     name: "alb-#{ident}",
+                                                     load_balancer_type: "application",
+                                                     security_groups: [@access_security_group],
+                                                     internal: !options[:public],
+                                                     subnets: subnets.map(&:id),
+                                                     tags: options[:tags],
+                                                   }
+
+              l7_ports.each { |l7_port|
+                port_ident = "alb-#{ident}-#{l7_port[:type]}-#{l7_port[:number]}"
+                target_group = resource :aws_lb_target_group, port_ident, {
+                                          name: port_ident,
+                                          port: l7_port[:number],
+                                          protocol: l7_port[:type].upcase,
+                                          vpc_id: vpc.id,
+                                        }.merge(l7_port.has_key?(:health_check) ? { health_check: l7_port[:health_check] }: {})
+
+                resource :aws_security_group_rule, port_ident, {
+                           security_group_id: @instance_security_group,
+                           type: "ingress",
+                           from_port: l7_port[:number],
+                           to_port: l7_port[:number],
+                           protocol: "tcp",
+                           source_security_group_ids: [
+                             @access_security_group,
+                           ],
+                         }
+
+                ssl_options = {}
+                if l7_port.has_key?(:ssl_certificate)
+                  ssl_options = {
+                    ssl_policy: "ELBSecurityPolicy-2015-05",
+                    certificate_arn: l7_port[:ssl_certificate],
+                  }
+                end
+
+                resource :aws_lb_listener, port_ident, {
+                           load_balancer_arn: application_load_balancer,
+                           port: l7_port[:number],
+                           protocol: l7_port[:type].upcase,
+                           default_action: {
+                             target_group_arn: target_group,
+                             type: "forward",
+                           },
+                         }.merge(ssl_options)
+
+                target_groups << target_group
+              }
+            end
+
+            if application_load_balancer
+              options[:zone].add_alias(
+                name,
+                {
+                  name: output_of(:aws_lb, "alb-#{ident}", :dns_name),
+                  zone_id: output_of(:aws_lb, "alb-#{ident}", :zone_id),
+                  evaluate_target_health: true,
+                },
+              )
+            elsif network_load_balancer
+              options[:zone].add_alias(
+                name,
+                {
+                  name: output_of(:aws_lb, "nlb-#{ident}", :dns_name),
+                  zone_id: output_of(:aws_lb, "nlb-#{ident}", :zone_id),
+                  evaluate_target_health: true,
+                },
+              )
+            end
           else
             @instance_security_group = @access_security_group
           end
@@ -239,7 +320,7 @@ module Terrafying
                          }.merge(options[:tags]).map { |k,v|
                            { key: k, value: v, propagate_at_launch: true }
                          },
-                       }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
+                       }.merge(target_groups ? {target_group_arns: target_groups} : {})
             }
           else
             asg = resource :aws_autoscaling_group, ident, {
@@ -255,7 +336,7 @@ module Terrafying
                                 }.merge(options[:tags]).map { |k,v|
                                   { key: k, value: v, propagate_at_launch: true }
                                 },
-                           }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
+                           }.merge(target_groups ? {target_group_arns: target_groups} : {})
 
             @ids = [asg]
           end
