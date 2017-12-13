@@ -28,22 +28,22 @@ module Terrafying
 
       attr_reader :name, :cidr
 
-      def self.create_in(vpc, name, clientid, clientsecret, options={})
-        VPN.new.create_in vpc, name, clientid, clientsecret, options
+      def self.create_in(vpc, name, client_id, client_secret, options={})
+        VPN.new.create_in vpc, name, client_id, client_secret, options
       end
 
       def initialize()
         super
       end
 
-      def create_in(vpc, name, clientid, clientsecret, options={})
+      def create_in(vpc, name, client_id, client_secret, options={})
         options = {
           group: "uSwitch Developers",
           cidr: "10.8.0.0/24",
           tags: {}
         }.merge(options)
-        @clientid = clientid
-        @clientsecret = clientsecret
+        @client_id = client_id
+        @client_secret = client_secret
         @name = name
         @vpc = vpc
         @cidr = options[:cidr]
@@ -57,6 +57,26 @@ module Terrafying
                                                        units: [ openvpn_service, openvpn_authz_service, oauth2_proxy_service(cookie_secret), caddy_service ],
                                                        files: [ openvpn_conf, openvpn_env, caddy_conf ],
                                                      })
+
+        resource :null_resource, "ad-app-configure", {
+                   triggers: {
+                     service_ids: @service.ids.join(","),
+                   },
+                   provisioner: [
+                     {
+                       "local-exec" => {
+                         when: "create",
+                         command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{client_id}' '#{@fqdn}'"
+                       },
+                     },
+                     {
+                       "local-exec" => {
+                         when: "destroy",
+                         command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{client_id}' '#{@fqdn}'"
+                       }
+                     },
+                   ],
+                 }
 
         self
       end
@@ -144,8 +164,8 @@ ExecStart=/usr/bin/docker run --name oauth_proxy2 \
 -v /etc/ssl/cert:/etc/ssl/cert:ro \
 --net=host \
 quay.io/uswitch/oauth2_proxy:stable \
--client-id='#{@clientid}' \
--client-secret='#{@clientsecret}' \
+-client-id='#{@client_id}' \
+-client-secret='#{@client_secret}' \
 -permit-groups='#{@group}' \
 -email-domain='*' \
 -cookie-secret='#{cookie_secret}' \

@@ -33,7 +33,7 @@ module Terrafying
 
     class Service < Terrafying::Context
 
-      attr_reader :name, :fqdn, :instance_fqdns, :instance_security_group
+      attr_reader :name, :ids, :fqdn, :instance_fqdns, :instance_security_group
 
       def self.create_in(vpc, name, options={})
         Service.new.create_in vpc, name, options
@@ -242,20 +242,22 @@ module Terrafying
                        }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
             }
           else
-            resource :aws_autoscaling_group, ident, {
-                       name: ident,
-                       launch_configuration: launch_config,
-                       min_size: options[:instances][:min],
-                       max_size: options[:instances][:max],
-                       desired_capacity: options[:instances][:desired],
-                       vpc_zone_identifier: subnets.map(&:id),
-                       tags: {
-                         Name: ident,
-                         service_name: name,
-                       }.merge(options[:tags]).map { |k,v|
-                         { key: k, value: v, propagate_at_launch: true }
-                       },
-                     }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
+            asg = resource :aws_autoscaling_group, ident, {
+                                name: ident,
+                                launch_configuration: launch_config,
+                                min_size: options[:instances][:min],
+                                max_size: options[:instances][:max],
+                                desired_capacity: options[:instances][:desired],
+                                vpc_zone_identifier: subnets.map(&:id),
+                                tags: {
+                                  Name: ident,
+                                  service_name: name,
+                                }.merge(options[:tags]).map { |k,v|
+                                  { key: k, value: v, propagate_at_launch: true }
+                                },
+                           }.merge(load_balancer ? {load_balancers: [load_balancer]} : {})
+
+            @ids = [asg]
           end
 
         elsif options[:instances].is_a?(Array)
@@ -264,7 +266,7 @@ module Terrafying
 
           @instance_security_group = @access_security_group
 
-          instances = options[:instances].map.with_index {|config, i|
+          @ids = options[:instances].map.with_index {|config, i|
             instance_ident = "#{ident}-#{i}"
 
             if config.has_key? :subnet and config.has_key? :ip_address
@@ -330,12 +332,14 @@ module Terrafying
               "#{name}-#{i}",
               [output_of(:aws_instance, instance_ident, instance_ip)],
             )
+
+            instance_id
           }
 
           options[:zone].add_record_in(
             self,
             name,
-            instances.map.with_index {|_, i| output_of(:aws_instance, "#{ident}-#{i}", instance_ip) },
+            @ids.map.with_index {|_, i| output_of(:aws_instance, "#{ident}-#{i}", instance_ip) },
           )
 
           @ports.each { |port|
@@ -350,7 +354,7 @@ module Terrafying
 
             options[:zone].add_srv(
               name, port[:name], port[:number], port[:type],
-              instances.map.with_index { |_, i| "#{name}-#{i}" },
+              @ids.map.with_index { |_, i| "#{name}-#{i}" },
             )
           }
 
