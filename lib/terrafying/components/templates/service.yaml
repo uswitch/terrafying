@@ -81,7 +81,7 @@ storage:
     <% cas.each { |ca| %>
     - filesystem: "root"
       path: "/etc/ssl/<%= ca.name %>/ca.cert"
-      mode: 0400
+      mode: 0444
       user: { id: 0 }
       group: { id: 0 }
       contents:
@@ -90,14 +90,14 @@ storage:
     <% keypairs.each { |keypair| %>
     - filesystem: "root"
       path: "/etc/ssl/<%= keypair[:ca].name %>/<%= keypair[:name] %>/cert"
-      mode: 0400
+      mode: 0444
       user: { id: 0 }
       group: { id: 0 }
       contents:
         source: <%= keypair[:source][:cert] %>
     - filesystem: "root"
       path: "/etc/ssl/<%= keypair[:ca].name %>/<%= keypair[:name] %>/key"
-      mode: 0400
+      mode: 0444
       user: { id: 0 }
       group: { id: 0 }
       contents:
