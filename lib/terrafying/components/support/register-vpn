@@ -1,10 +1,14 @@
 #!/bin/bash
 
+set -euo pipefail
+
 app_id="${1}"
 new_fqdn="${2}"
 
+set +u
 if [[ ! -z $AZURE_USER ]] && [[ ! -z $AZURE_PASSWORD ]]
 then
+    set -u
     az login --service-principal \
        --allow-no-subscriptions \
        -t "1c2154bf-3a88-413a-8407-0fd3dd69d216" \
@@ -12,9 +16,13 @@ then
        -p "${AZURE_PASSWORD}" >/dev/null
 
     function finish {
+        exit_code=$?
         az logout
+        exit $exit_code
     }
     trap finish EXIT
+else
+    set -u
 fi
 
 app="$(az ad app show --id ${app_id})"
