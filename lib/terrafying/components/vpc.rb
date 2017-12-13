@@ -18,8 +18,8 @@ module Terrafying
         VPC.new.find name
       end
 
-      def self.create(name, cidr, parent_zone, options={})
-        VPC.new.create name, cidr, parent_zone, options
+      def self.create(name, cidr, options={})
+        VPC.new.create name, cidr, options
       end
 
       def initialize()
@@ -53,13 +53,14 @@ module Terrafying
         self
       end
 
-      def create(name, raw_cidr, parent_zone, options={})
+      def create(name, raw_cidr, options={})
         options = {
           subnet_size: 256 - CIDR_PADDING,
           nat_eips: [],
           azs: aws.availability_zones,
           tags: {},
           ssh_group: DEFAULT_SSH_GROUP,
+          parent_zone: Zone.find("vpc.usw.co"),
         }.merge(options)
 
         @name = name
@@ -89,8 +90,8 @@ module Terrafying
                          tags: { Name: name, ssh_group: @ssh_group }.merge(@tags),
                        }
 
-        @zone = add! Terrafying::Components::Zone.create("#{name}.#{parent_zone.fqdn}", {
-                                                           parent_zone: parent_zone,
+        @zone = add! Terrafying::Components::Zone.create("#{name}.#{options[:parent_zone].fqdn}", {
+                                                           parent_zone: options[:parent_zone],
                                                            tags: { vpc: @id }.merge(@tags),
                                                          })
 
