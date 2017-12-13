@@ -157,10 +157,10 @@ module Terrafying
                                        listener: @ports.map { |port|
                                          {
                                            instance_port: port[:number],
-                                           instance_protocol: "tcp",
+                                           instance_protocol: port[:type],
                                            lb_port: port[:number],
-                                           lb_protocol: "tcp",
-                                         }
+                                           lb_protocol: port[:type],
+                                         }.merge((port.has_key? :ssl_certificate) ? { ssl_certificate_id: port[:ssl_certificate] } : {})
                                        },
                                      }
 
