@@ -60,8 +60,11 @@ module Terrafying
           azs: aws.availability_zones,
           tags: {},
           ssh_group: DEFAULT_SSH_GROUP,
-          parent_zone: Zone.find("vpc.usw.co"),
         }.merge(options)
+
+        if options[:parent_zone].nil?
+          options[:parent_zone] = Zone.find("vpc.usw.co")
+        end
 
         @name = name
         @cidr = raw_cidr
