@@ -1,4 +1,5 @@
 
+require 'digest'
 require 'netaddr'
 
 require 'terrafying/generator'
@@ -49,7 +50,8 @@ module Terrafying
         @cidr = options[:cidr]
         @fqdn = vpc.zone.qualify(name)
         @group = options[:group]
-        cookie_secret = Base64.strict_encode64(clientsecret+clientid).byteslice(0,16)
+
+        cookie_secret = Base64.strict_encode64(Digest::SHA2.digest(vpc.name + name + client_secret + client_id).byteslice(0,16))
 
         @service = add! Service.create_in(vpc, name, { public: true,
                                                        ports: [22, 443, { number: 1194, type: "udp" }],
@@ -161,7 +163,6 @@ Requires=openvpn.service
 [Service]
 ExecStartPre=-/usr/bin/docker rm -f oauth_proxy2
 ExecStart=/usr/bin/docker run --name oauth_proxy2 \
--v /etc/ssl/cert:/etc/ssl/cert:ro \
 --net=host \
 quay.io/uswitch/oauth2_proxy:stable \
 -client-id='#{@client_id}' \
@@ -173,7 +174,10 @@ quay.io/uswitch/oauth2_proxy:stable \
 -http-address='0.0.0.0:4180' \
 -redirect-url='https://#{@fqdn}/oauth2/callback' \
 -upstream='http://localhost:8080' \
--approval-prompt=''
+-approval-prompt='' \
+-cookie-secure \
+-pass-access-token=true \
+-pass-groups
 Restart=always
 RestartSec=30
 
@@ -196,7 +200,7 @@ Requires=oauth2_proxy.service
 [Service]
 ExecStartPre=-/usr/bin/docker rm -f caddy
 ExecStart=/usr/bin/docker run --name caddy \
--v /etc/ssl/cert:/etc/ssl/cert:ro \
+-v /etc/ssl/certs:/etc/ssl/cert:ro \
 -v /etc/caddy/Caddyfile:/etc/Caddyfile \
 -v /etc/caddy/certs:/etc/caddy/certs \
 -e "CADDYPATH=/etc/caddy/certs" \
