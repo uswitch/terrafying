@@ -9,7 +9,7 @@ RUN echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ wheez
     apt-get update && \
     apt-get install -y azure-cli
 
-RUN curl -L -o terraform.zip https://releases.hashicorp.com/terraform/0.11.0/terraform_0.11.0_linux_amd64.zip  && \
+RUN curl -L -o terraform.zip https://releases.hashicorp.com/terraform/0.11.1/terraform_0.11.1_linux_amd64.zip  && \
     unzip terraform.zip && rm terraform.zip && \
     mv terraform /usr/bin/terraform
 
