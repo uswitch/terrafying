@@ -49,7 +49,7 @@ module Terrafying
         else
           @ssh_group = DEFAULT_SSH_GROUP
         end
-        @internal_ssh_security_group = aws.security_group("#{name}-internal-ssh")
+        @internal_ssh_security_group = aws.security_group("#{name.gsub(/[\s\.]/,"-")}-internal-ssh")
         self
       end
 
@@ -147,7 +147,7 @@ module Terrafying
 
 
       def peer_with(other_vpc)
-        other_vpc_ident = other_vpc.name.gsub(/ /, "")
+        other_vpc_ident = other_vpc.name.gsub(/[\s\.]/, "-")
 
         our_cidr = NetAddr::CIDR.create(@cidr)
         other_cidr = NetAddr::CIDR.create(other_vpc.cidr)
