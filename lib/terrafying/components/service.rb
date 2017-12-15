@@ -46,7 +46,7 @@ module Terrafying
 
       def create_in(vpc, name, options={})
         options = {
-          ami: aws.ami("CoreOS-beta-1548.3.0-hvm", owners=["595879546273"]),
+          ami: aws.ami("CoreOS-stable-1576.4.0-hvm", owners=["595879546273"]),
           instance_type: "t2.micro",
           public: false,
           internet_egress: false,
