@@ -29,20 +29,21 @@ module Terrafying
 
       attr_reader :name, :cidr
 
-      def self.create_in(vpc, name, client_id, client_secret, options={})
-        VPN.new.create_in vpc, name, client_id, client_secret, options
+      def self.create_in(vpc, name, client_id, client_secret, tenant_id, options={})
+        VPN.new.create_in vpc, name, client_id, client_secret, tenant_id, options
       end
 
       def initialize()
         super
       end
 
-      def create_in(vpc, name, client_id, client_secret, options={})
+      def create_in(vpc, name, client_id, client_secret, tenant_id, options={})
         options = {
           group: "uSwitch Developers",
           cidr: "10.8.0.0/24",
           tags: {}
         }.merge(options)
+        @tenant_id = tenant_id
         @client_id = client_id
         @client_secret = client_secret
         @name = name
@@ -68,13 +69,13 @@ module Terrafying
                      {
                        "local-exec" => {
                          when: "create",
-                         command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{client_id}' '#{@fqdn}'"
+                         command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{client_id}' '#{tenant_id}' '#{@fqdn}'"
                        },
                      },
                      {
                        "local-exec" => {
                          when: "destroy",
-                         command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{client_id}' '#{@fqdn}'"
+                         command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{client_id}' '#{tenant_id}' '#{@fqdn}'"
                        }
                      },
                    ],
