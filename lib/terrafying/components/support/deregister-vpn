@@ -3,7 +3,8 @@
 set -euo pipefail
 
 app_id="${1}"
-new_fqdn="${2}"
+tenant_id="${2}"
+new_fqdn="${3}"
 
 set +u
 if [[ ! -z $AZURE_USER ]] && [[ ! -z $AZURE_PASSWORD ]]
@@ -11,7 +12,7 @@ then
     set -u
     az login --service-principal \
        --allow-no-subscriptions \
-       -t "1c2154bf-3a88-413a-8407-0fd3dd69d216" \
+       -t "${tenant_id}" \
        -u "${AZURE_USER}" \
        -p "${AZURE_PASSWORD}" >/dev/null
 
