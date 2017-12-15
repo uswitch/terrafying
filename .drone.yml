@@ -12,7 +12,8 @@ pipeline:
 
   test:
     image:  quay.io/uswitch/terrafying:${DRONE_COMMIT_SHA}
-    script: bundle exec rspec spec/
+    commands:
+      - bundle exec rspec spec/
     when:
       event: push
 
