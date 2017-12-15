@@ -61,25 +61,25 @@ module Terrafying
                                                        files: [ openvpn_conf, openvpn_env, caddy_conf ],
                                                      })
 
-        resource :null_resource, "ad-app-configure", {
-                   triggers: {
-                     service_ids: @service.ids.join(","),
-                   },
-                   provisioner: [
-                     {
-                       "local-exec" => {
-                         when: "create",
-                         command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{client_id}' '#{tenant_id}' '#{@fqdn}'"
-                       },
-                     },
-                     {
-                       "local-exec" => {
-                         when: "destroy",
-                         command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{client_id}' '#{tenant_id}' '#{@fqdn}'"
-                       }
-                     },
-                   ],
-                 }
+        # resource :null_resource, "ad-app-configure", {
+        #            triggers: {
+        #              service_ids: @service.ids.join(","),
+        #            },
+        #            provisioner: [
+        #              {
+        #                "local-exec" => {
+        #                  when: "create",
+        #                  command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{client_id}' '#{tenant_id}' '#{@fqdn}'"
+        #                },
+        #              },
+        #              {
+        #                "local-exec" => {
+        #                  when: "destroy",
+        #                  command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{client_id}' '#{tenant_id}' '#{@fqdn}'"
+        #                }
+        #              },
+        #            ],
+        #          }
 
         self
       end
