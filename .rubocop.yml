@@ -1,0 +1,5 @@
+AllCops:
+  TargetRubyVersion: 2.2
+
+Style/BracesAroundHashParameters:
+  EnforcedStyle: braces

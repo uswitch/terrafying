@@ -108,6 +108,19 @@ module Terrafying
                  }
       end
 
+      def add_cname_in(ctx, name, *records)
+        fqdn = qualify(name)
+        ident = fqdn.tr('.', '-')
+        ctx.resource :aws_route53_record, ident,
+          {
+            zone_id: @id,
+            name: fqdn,
+            type: 'CNAME',
+            ttl:  300,
+            records: records
+          }
+      end
+
       def qualify(name)
         "#{name}.#{@fqdn}"
       end
