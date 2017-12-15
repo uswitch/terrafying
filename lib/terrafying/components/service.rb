@@ -26,6 +26,14 @@ def enrich_ports(ports)
   }
 end
 
+def is_l4_port(port)
+  port[:type] == "tcp" || port[:type] == "udp"
+end
+
+def is_l7_port(port)
+  port[:type] == "http" || port[:type] == "https"
+end
+
 
 module Terrafying
 
@@ -144,8 +152,8 @@ module Terrafying
         if options[:instances].is_a?(Hash)
 
           if @ports.count > 0
-            l4_ports = @ports.select { |p| p[:type] == "tcp" }
-            l7_ports = @ports.select { |p| p[:type] == "http" || p[:type] == "https" }
+            l4_ports = @ports.select { |p| is_l4_port(p) }
+            l7_ports = @ports.select { |p| is_l7_port(p) }
 
             target_groups = []
 
@@ -202,6 +210,8 @@ module Terrafying
                              type: "forward",
                            },
                          }
+
+                l4_port[:security_group] = @instance_security_group
 
                 target_groups << target_group
               }
@@ -466,7 +476,7 @@ module Terrafying
       def used_by(other_service)
         @ports.map {|port|
           resource :aws_security_group_rule, "#{@name}-to-#{other_service.name}-#{port[:name]}", {
-                     security_group_id: @access_security_group,
+                     security_group_id: port.fetch(:security_group, @access_security_group),
                      type: "ingress",
                      from_port: port[:number],
                      to_port: port[:number],
@@ -482,7 +492,7 @@ module Terrafying
 
           @ports.map {|port|
             resource :aws_security_group_rule, "#{@name}-to-#{cidr_ident}-#{port[:name]}", {
-                       security_group_id: @access_security_group,
+                       security_group_id: port.fetch(:security_group, @access_security_group),
                        type: "ingress",
                        from_port: port[:number],
                        to_port: port[:number],
