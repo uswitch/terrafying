@@ -10,6 +10,13 @@ pipeline:
     when:
       event: push
 
+  test:
+    image:  quay.io/uswitch/terrafying:${DRONE_COMMIT_SHA}
+    commands:
+      - bundle exec rspec spec/
+    when:
+      event: push
+
   docker-latest:
     image: plugins/docker
     repo: quay.io/uswitch/terrafying
