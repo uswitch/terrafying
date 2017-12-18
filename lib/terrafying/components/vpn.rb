@@ -42,6 +42,8 @@ module Terrafying
         options = {
           group: "uSwitch Developers",
           cidr: "10.8.0.0/24",
+          public: true,
+          subnets: vpc.subnets.fetch(:public, []),
           tags: {}
         }.merge(options)
 
@@ -109,10 +111,6 @@ module Terrafying
         end
 
         self
-      end
-
-      def instance_security_group
-        @service.instance_security_group
       end
 
       def used_by_cidr(*cidrs)

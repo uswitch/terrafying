@@ -86,8 +86,12 @@ module Terrafying
       end
 
       def add_alias(name, config)
+        add_alias_in(self, name, config)
+      end
+
+      def add_alias_in(ctx, name, config)
         fqdn = qualify(name)
-        resource :aws_route53_record, fqdn.gsub(/\./, "-"), {
+        ctx.resource :aws_route53_record, fqdn.gsub(/\./, "-"), {
                    zone_id: @id,
                    name: fqdn,
                    type: "A",

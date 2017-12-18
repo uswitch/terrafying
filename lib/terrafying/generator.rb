@@ -79,9 +79,20 @@ module Terrafying
       ret
     end
 
-    def add!(c)
-      @children.push(c)
-      c
+    def resources
+      out = output_with_children
+      ret = []
+      for type in out["resource"].keys
+        for id in out["resource"][type].keys
+          ret << "${#{type}.#{id}.id}"
+        end
+      end
+      ret
+    end
+
+    def add!(*c)
+      @children.push(*c)
+      c[0]
     end
 
   end

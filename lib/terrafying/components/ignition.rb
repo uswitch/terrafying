@@ -1,3 +1,5 @@
+require 'erb'
+require 'ostruct'
 
 module Terrafying
 
@@ -70,6 +72,25 @@ RestartSec=30
 
 EOF
         }
+      end
+
+      def self.generate(options={})
+        options = {
+          keypairs: [],
+          volumes: [],
+          files: [],
+          units: [],
+          ssh_group: "cloud",
+        }.merge(options)
+
+        options[:cas] = options[:keypairs].map { |kp| kp[:ca] }.sort.uniq
+
+        erb_path = File.join(File.dirname(__FILE__), "templates/ignition.yaml")
+        erb = ERB.new(IO.read(erb_path))
+
+        yaml = erb.result(OpenStruct.new(options).instance_eval { binding })
+
+        Terrafying::Util.to_ignition(yaml)
       end
 
     end

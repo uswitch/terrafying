@@ -75,7 +75,7 @@ module Terrafying
           gateway = { gateway_id: options[:gateway] }
           @public = true
         else
-          raise "You have to give a subnet either a nat or internet gateway"
+          @public = false
         end
 
         resource :aws_route, "#{name}-default", {
