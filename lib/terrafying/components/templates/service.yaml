@@ -17,6 +17,12 @@ systemd:
     - name: "<%= volume[:mount].tr('/','-')[1..-1] %>.mount"
       enabled: true
       contents: |
+        [Install]
+        WantedBy=local-fs.target
+
+        [Unit]
+        Before=docker.service
+
         [Mount]
         What=<%= volume[:device] %>
         Where=<%= volume[:mount] %>
