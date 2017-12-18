@@ -71,7 +71,7 @@ storage:
   <% if volumes.count > 0 %>
   filesystems:
     <% volumes.each { |volume| %>
-    - name: <%= volume[:name] %>
+    - name: <%= volume[:mount].tr('/','-')[1..-1] %>
       mount:
         device: <%= volume[:device] %>
         format: ext4
