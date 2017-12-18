@@ -17,7 +17,7 @@ RSpec.describe Terrafying::Components::Service, '#user_data' do
         unit == {
           name: 'var-test.mount',
           enabled: true,
-          contents: "[Mount]\nWhat=/dev/test\nWhere=/var/test\nType=ext4\n"
+          contents: "[Install]\nWantedBy=local-fs.target\n\n[Unit]\nBefore=docker.service\n\n[Mount]\nWhat=/dev/test\nWhere=/var/test\nType=ext4\n"
         }
       end).to be true
     end
