@@ -20,4 +20,5 @@ WORKDIR /usr/src/app
 
 RUN bundle install
 
-ENTRYPOINT ["/bin/bash"]
+CMD ["bash"]
+ENTRYPOINT []
