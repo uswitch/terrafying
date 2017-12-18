@@ -14,7 +14,7 @@ passwd:
 systemd:
   units:
     <% volumes.each { |volume| %>
-    - name: "<%= volume[:name] %>.mount"
+    - name: "<%= volume[:mount].tr('/','-')[1..-1] %>.mount"
       enabled: true
       contents: |
         [Mount]
