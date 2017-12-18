@@ -463,6 +463,7 @@ module Terrafying
           keypairs: [],
           volumes: [],
           units: [],
+          files: [],
           ssh_group: @ssh_group,
         }.merge(options)
 
