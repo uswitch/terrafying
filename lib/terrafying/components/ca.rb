@@ -61,14 +61,7 @@ module Terrafying
         @ca_key = output_of(:tls_private_key, @ident, :private_key_pem)
         @ca_cert = output_of(:tls_self_signed_cert, @ident, :cert_pem)
 
-        @ca_keypair =
-
-          self
-      end
-
-
-      def iam_statement
-
+        self
       end
 
       def create_keypair(name, options={})

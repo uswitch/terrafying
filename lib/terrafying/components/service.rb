@@ -148,7 +148,6 @@ module Terrafying
                                       role: output_of(:aws_iam_role, ident, :name),
                                     }
 
-
         if options[:instances].is_a?(Hash)
 
           if @ports.count > 0

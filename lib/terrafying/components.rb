@@ -1,5 +1,6 @@
 
 require 'terrafying/components/ca'
+require 'terrafying/components/letsencrypt'
 require 'terrafying/components/service'
 require 'terrafying/components/subnet'
 require 'terrafying/components/vpc'
