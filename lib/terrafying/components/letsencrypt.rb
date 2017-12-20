@@ -121,6 +121,8 @@ module Terrafying
       end
 
       def reference_keypair(name)
+        key_ident = "#{@name}-#{name.gsub(/\./, '-')}"
+
         {
           name: name,
           ca: self,
@@ -128,6 +130,7 @@ module Terrafying
             cert: File.join("s3://", @bucket, @prefix, @name, name, "cert"),
             key: File.join("s3://", @bucket, @prefix, @name, name, "key"),
           },
+          resources: [ "aws_s3_bucket_object.#{key_ident}-key", "aws_s3_bucket_object.#{key_ident}-cert" ],
           iam_statement: {
             Effect: "Allow",
             Action: [
