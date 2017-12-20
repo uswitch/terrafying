@@ -8,6 +8,7 @@ require 'terrafying/components/instance'
 require 'terrafying/components/instanceprofile'
 require 'terrafying/components/loadbalancer'
 require 'terrafying/components/staticset'
+require 'terrafying/components/usable'
 
 module Terrafying
 
@@ -15,7 +16,9 @@ module Terrafying
 
     class Service < Terrafying::Context
 
-      attr_reader :name, :domain_names
+      attr_reader :name, :domain_names, :security_group
+
+      include Usable
 
       def self.create_in(vpc, name, options={})
         Service.new.create_in vpc, name, options
@@ -60,6 +63,7 @@ module Terrafying
         ident = "#{vpc.name}-#{name}"
 
         @name = ident
+        @ports = enrich_ports(options[:ports])
         @domain_names = [ options[:zone].qualify(name) ]
 
         depends_on = options[:depends_on] + options[:keypairs].map{ |kp| kp[:resources] }.flatten
@@ -78,6 +82,12 @@ module Terrafying
                                  })
                                )
 
+          if @load_balancer == "application"
+            @security_group = @load_balancer.security_group
+          else
+            @security_group = @instance_set.security_group
+          end
+
           vpc.zone.add_alias_in(self, name, @load_balancer.alias_config)
 
         elsif options[:instances].is_a?(Array)
@@ -86,7 +96,9 @@ module Terrafying
                                  vpc, name, options.merge({
                                    instance_profile: instance_profile,
                                    depends_on: depends_on,
-                                 }))
+                                                          }))
+
+          @security_group = @instance_set.security_group
 
           vpc.zone.add_record_in(self, name, @instance_set.instances.map { |i| i.ip_address })
           @instance_set.instances.each { |i|
@@ -100,22 +112,6 @@ module Terrafying
         end
 
         self
-      end
-
-      def used_by(*service)
-        if @load_balancer && @load_balancer.type == "application"
-          @load_balancer.used_by(*service)
-        else
-          @instance_set.used_by(*service)
-        end
-      end
-
-      def used_by_cidr(*cidrs)
-        if @load_balancer && @load_balancer.type == "application"
-          @load_balancer.used_by_cidr(*cidrs)
-        else
-          @instance_set.used_by_cidr(*cidrs)
-        end
       end
 
     end

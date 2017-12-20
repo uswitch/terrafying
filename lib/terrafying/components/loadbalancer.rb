@@ -1,4 +1,6 @@
 
+require 'terrafying/components/usable'
+
 require_relative './ports'
 
 module Terrafying
@@ -7,10 +9,12 @@ module Terrafying
 
     class LoadBalancer < Terrafying::Context
 
-      attr_reader :id, :type, :target_groups, :alias_config
+      attr_reader :id, :type, :security_group, :target_groups, :alias_config
 
-      def self.create_in(vpc, name, ports, options={})
-        LoadBalancer.new.create_in vpc, name, ports, options
+      include Usable
+
+      def self.create_in(vpc, name, options={})
+        LoadBalancer.new.create_in vpc, name, options
       end
 
       def self.find_in(vpc, name)
@@ -25,16 +29,17 @@ module Terrafying
         raise 'unimplemented'
       end
 
-      def create_in(vpc, name, ports, options={})
+      def create_in(vpc, name, options={})
         options = {
+          ports: [],
           public: false,
           subnets: vpc.subnets.fetch(:private, []),
           tags: {},
         }.merge(options)
 
-        ports = enrich_ports(ports)
+        @ports = enrich_ports(options[:ports])
 
-        l4_ports = ports.select{ |p| is_l4_port(p) }
+        l4_ports = @ports.select{ |p| is_l4_port(p) }
 
         if l4_ports.count > 0 && l4_ports.count < ports.count
           raise 'Ports have to either be all layer 4 or 7'
@@ -63,7 +68,7 @@ module Terrafying
 
         @target_groups = []
 
-        ports.each { |port|
+        @ports.each { |port|
           port_ident = "#{ident}-#{port[:type]}-#{port[:number]}"
 
           target_group = resource :aws_lb_target_group, port_ident, {
@@ -101,14 +106,6 @@ module Terrafying
         }
 
         self
-      end
-
-      def used_by(*service)
-        raise 'unimplemented'
-      end
-
-      def used_by_cidr(*cidrs)
-        raise 'unimplmeneted'
       end
 
     end

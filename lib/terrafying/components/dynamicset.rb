@@ -1,4 +1,6 @@
 
+require 'terrafying/components/usable'
+
 require_relative './ports'
 
 module Terrafying
@@ -7,7 +9,9 @@ module Terrafying
 
     class DynamicSet < Terrafying::Context
 
-      attr_reader :name
+      attr_reader :name, :security_group
+
+      include Usable
 
       def self.create_in(vpc, name, options={})
         DynamicSet.new.create_in vpc, name, options
@@ -32,6 +36,7 @@ module Terrafying
           public: false,
           ami: aws.ami("CoreOS-stable-1576.4.0-hvm", owners=["595879546273"]),
           instance_type: "t2.micro",
+          instances: { min: 1, max: 1, desired: 1 },
           ports: [],
           instance_profile: nil,
           security_groups: [],
@@ -45,6 +50,7 @@ module Terrafying
         ident = "#{vpc.name}-#{name}"
 
         @name = ident
+        @ports = enrich_ports(options[:ports])
 
         @security_group = resource :aws_security_group, ident, {
                                      name: "dynamicset-#{ident}",
@@ -60,7 +66,6 @@ module Terrafying
                                        }
                                      ],
                                    }
-
 
         launch_config = resource :aws_launch_configuration, ident, {
                                    name_prefix: "#{ident}-",

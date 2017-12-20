@@ -1,6 +1,8 @@
 
 require 'xxhash'
 
+require 'terrafying/components/usable'
+
 require_relative './ports'
 
 module Terrafying
@@ -9,7 +11,9 @@ module Terrafying
 
     class StaticSet < Terrafying::Context
 
-      attr_reader :name, :instances
+      attr_reader :name, :instances, :security_group
+
+      include Usable
 
       def self.create_in(vpc, name, options={})
         StaticSet.new.create_in vpc, name, options
@@ -39,12 +43,13 @@ module Terrafying
           subnets: vpc.subnets.fetch(:private, []),
           ports: [],
           instances: [{}],
-          instance_profile: "",
+          instance_profile: nil,
           security_groups: [],
           user_data: "",
           tags: {},
           ssh_group: vpc.ssh_group,
           depends_on: [],
+          volumes: [],
         }.merge(options)
 
         ident = "#{vpc.name}-#{name}"
@@ -71,33 +76,17 @@ module Terrafying
         @instances = options[:instances].map.with_index {|config, i|
           instance_ident = "#{name}-#{i}"
 
-          if config.has_key? :subnet and config.has_key? :ip_address
-            subnet = config[:subnet]
-            ip_address = config[:ip_address]
-            lifecycle = {
-              lifecycle: { create_before_destroy: false },
-            }
-          else
-            # pick something consistent but not just the first subnet
-            subnet_index = XXhash.xxh32(ident) % options[:subnets].count
-            subnet = options[:subnets][subnet_index]
-            lifecycle = {
-              lifecycle: { create_before_destroy: true },
-            }
-          end
-
           instance = add! Instance.create_in(
                                vpc, instance_ident, options.merge(
                                  {
-                                   subnet: subnet,
+                                   subnets: options[:subnets],
                                    security_groups: [@security_group] + options[:security_groups],
-                                   ip_address: ip_address,
-                                   lifecycle: lifecycle,
                                    depends_on: options[:depends_on],
+                                   instance_profile: options[:instance_profile],
                                    tags: {
                                      staticset_name: ident,
                                    }.merge(options[:tags])
-                                 }
+                                 }.merge(config.has_key?(:ip_address) ? { ip_address: config[:ip_address] } : {})
                                )
                              )
 
@@ -135,27 +124,6 @@ module Terrafying
         }
 
         self
-      end
-
-      def used_by_cidr(*cidrs)
-        cidrs.map { |cidr|
-          cidr_ident = cidr.gsub(/[\.\/]/, "-")
-
-          @ports.map {|port|
-            resource :aws_security_group_rule, "#{@name}-to-#{cidr_ident}-#{port[:name]}", {
-                       security_group_id: port.fetch(:security_group, @security_group),
-                       type: "ingress",
-                       from_port: port[:number],
-                       to_port: port[:number],
-                       protocol: port[:type],
-                       cidr_blocks: [cidr],
-                     }
-          }
-        }
-      end
-
-      def used_by(*service)
-        raise 'unimplemented'
       end
 
     end
