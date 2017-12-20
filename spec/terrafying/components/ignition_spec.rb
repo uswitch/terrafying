@@ -140,7 +140,7 @@ RSpec.describe Terrafying::Components::Ignition, '#generate' do
   end
 
   it "setups keypairs/cas properly" do
-    ca = Terrafying::Components::CA.create("great-ca", "some-bucket")
+    ca = Terrafying::Components::SelfSignedCA.create("great-ca", "some-bucket")
     keypair = ca.create_keypair("foo")
 
     user_data = Terrafying::Components::Ignition.generate(

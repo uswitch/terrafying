@@ -17,14 +17,14 @@ module Terrafying
         super
       end
 
-      def create(bucket, options={})
+      def create(name, bucket, options={})
         options = {
           prefix: "",
           server_url: "https://acme-staging.api.letsencrypt.org/directory",
           email_address: "cloud@uswitch.com",
         }.merge(options)
 
-        @name = "letsencrypt"
+        @name = name
         @bucket = bucket
         @prefix = options[:prefix]
         @server_url = options[:server_url]
