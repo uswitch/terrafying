@@ -25,6 +25,7 @@ module Terrafying
 
       def create_in(vpc, name, options={})
         options = {
+          depends_on: [],
         }.merge(options)
 
         ident = "#{vpc.name}-#{name}"
@@ -51,6 +52,7 @@ module Terrafying
                    lifecycle: {
                      create_before_destroy: true,
                    },
+                   depends_on: options[:depends_on],
                  }.merge(options[:ip_address] ? { private_ip: options[:ip_address] } : {}).merge(options[:lifecycle])
 
         @ip_address = output_of(:aws_instance, ident, options[:public] ? :public_ip : :private_ip)

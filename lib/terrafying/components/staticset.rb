@@ -44,6 +44,7 @@ module Terrafying
           user_data: "",
           tags: {},
           ssh_group: vpc.ssh_group,
+          depends_on: [],
         }.merge(options)
 
         ident = "#{vpc.name}-#{name}"
@@ -92,6 +93,7 @@ module Terrafying
                                    security_groups: [@security_group] + options[:security_groups],
                                    ip_address: ip_address,
                                    lifecycle: lifecycle,
+                                   depends_on: options[:depends_on],
                                    tags: {
                                      staticset_name: ident,
                                    }.merge(options[:tags])

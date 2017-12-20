@@ -50,7 +50,7 @@ module Terrafying
           ssh_group: vpc.ssh_group,
           subnets: vpc.subnets.fetch(:private, []),
           pivot: false,
-          privatelink: false,
+          depends_on: [],
         }.merge(options)
 
         if ! options.has_key? :user_data
@@ -62,6 +62,8 @@ module Terrafying
         @name = ident
         @domain_names = [ options[:zone].qualify(name) ]
 
+        depends_on = options[:depends_on] + options[:keypairs].map{ |kp| kp[:resources] }.flatten
+
         iam_statements = options[:iam_policy_statements] + options[:keypairs].map { |kp| kp[:iam_statement] }
         instance_profile = add! InstanceProfile.create(ident, { statements: iam_statements })
 
@@ -72,6 +74,7 @@ module Terrafying
                                  vpc, name, options.merge({
                                    instance_profile: instance_profile,
                                    load_balancer: @load_balancer,
+                                   depends_on: depends_on,
                                  })
                                )
 
@@ -82,6 +85,7 @@ module Terrafying
           @instance_set = add! StaticSet.create_in(
                                  vpc, name, options.merge({
                                    instance_profile: instance_profile,
+                                   depends_on: depends_on,
                                  }))
 
           vpc.zone.add_record_in(self, name, @instance_set.instances.map { |i| i.ip_address })

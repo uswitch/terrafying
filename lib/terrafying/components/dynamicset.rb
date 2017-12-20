@@ -39,6 +39,7 @@ module Terrafying
           ssh_group: vpc.ssh_group,
           subnets: vpc.subnets.fetch(:private, []),
           pivot: false,
+          depends_on: [],
         }.merge(options)
 
         ident = "#{vpc.name}-#{name}"
@@ -99,6 +100,7 @@ module Terrafying
                        }.merge(options[:tags]).map { |k,v|
                          { key: k, value: v, propagate_at_launch: true }
                        },
+                       depends_on: options[:depends_on],
                      }.merge(target_groups ? {target_group_arns: target_groups} : {})
           }
         else
@@ -115,6 +117,7 @@ module Terrafying
                      }.merge(options[:tags]).map { |k,v|
                        { key: k, value: v, propagate_at_launch: true }
                      },
+                     depends_on: options[:depends_on],
                    }.merge(options[:load_balancer] ? {target_group_arns: options[:load_balancer].target_groups} : {})
         end
 
