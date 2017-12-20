@@ -2,6 +2,7 @@
 require 'digest'
 require 'netaddr'
 
+require 'terrafying/components/ignition'
 require 'terrafying/generator'
 
 
@@ -29,57 +30,83 @@ module Terrafying
 
       attr_reader :name, :cidr
 
-      def self.create_in(vpc, name, client_id, client_secret, tenant_id, options={})
-        VPN.new.create_in vpc, name, client_id, client_secret, tenant_id, options
+      def self.create_in(vpc, name, options={})
+        VPN.new.create_in vpc, name, options
       end
 
       def initialize()
         super
       end
 
-      def create_in(vpc, name, client_id, client_secret, tenant_id, options={})
+      def create_in(vpc, name, options={})
         options = {
           group: "uSwitch Developers",
           cidr: "10.8.0.0/24",
           tags: {}
         }.merge(options)
-        @tenant_id = tenant_id
-        @client_id = client_id
-        @client_secret = client_secret
+
         @name = name
         @vpc = vpc
         @cidr = options[:cidr]
         @fqdn = vpc.zone.qualify(name)
-        @group = options[:group]
 
-        cookie_secret = Base64.strict_encode64(Digest::SHA2.digest(vpc.name + name + client_secret + client_id).byteslice(0,16))
+        has_oauth2_provider = options.has_key? :oauth2_provider
 
-        @service = add! Service.create_in(vpc, name, { public: true,
-                                                       ports: [22, 443, { number: 1194, type: "udp" }],
-                                                       tags: options[:tags],
-                                                       units: [ openvpn_service, openvpn_authz_service, oauth2_proxy_service(cookie_secret), caddy_service ],
-                                                       files: [ openvpn_conf, openvpn_env, caddy_conf ],
-                                                     })
+        units = [openvpn_service, openvpn_authz_service, caddy_service(options[:ca])]
+        files = [openvpn_conf, openvpn_env, caddy_conf(options[:ca], has_oauth2_provider)]
+        keypairs = []
 
-        # resource :null_resource, "ad-app-configure", {
-        #            triggers: {
-        #              service_ids: @service.ids.join(","),
-        #            },
-        #            provisioner: [
-        #              {
-        #                "local-exec" => {
-        #                  when: "create",
-        #                  command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{client_id}' '#{tenant_id}' '#{@fqdn}'"
-        #                },
-        #              },
-        #              {
-        #                "local-exec" => {
-        #                  when: "destroy",
-        #                  command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{client_id}' '#{tenant_id}' '#{@fqdn}'"
-        #                }
-        #              },
-        #            ],
-        #          }
+        if has_oauth2_provider
+          if ! options[:oauth2_provider].is_a? Hash || [:type, :client_id, :client_secret].all? {|k| options[:oauth2_provider].has_key? k }
+            raise "You need to provide 'client_id', 'client_secret', and 'type' when you are passing a provider"
+          end
+
+          @oauth2_provider = options[:oauth2_provider]
+
+          vpn_hash = Digest::SHA2.digest(vpc.name + name + @oauth2_provider[:client_secret] + @oauth2_provider[:client_id])
+          cookie_secret = Base64.strict_encode64(vpn_hash.byteslice(0,16))
+
+          units.push(oauth2_proxy_service(@oauth2_provider, cookie_secret))
+        end
+
+        if options.has_key?(:ca)
+          keypairs.push(options[:ca].create_keypair_in(self, @fqdn))
+        end
+
+        @service = add! Service.create_in(
+                          vpc, name,
+                          {
+                            public: true,
+                            ports: [22, 443, { number: 1194, type: "udp" }],
+                            tags: options[:tags],
+                            units: units,
+                            files: files,
+                            keypairs: keypairs,
+                            subnets: options[:subnets],
+                          }
+                        )
+
+        if has_oauth2_provider and @oauth2_provider[:type] == "azure" and @oauth2_provider[:register]
+          resource :null_resource, "ad-app-configure", {
+                     triggers: {
+                       service_resources: @service.resources.join(","),
+                     },
+                     provisioner: [
+                       {
+                         "local-exec" => {
+                           when: "create",
+                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{@oauth2_provider[:client_id]}' '#{@oauth2_provider[:tenant_id]}' '#{@fqdn}'"
+                         },
+                       },
+                       {
+                         "local-exec" => {
+                           when: "destroy",
+                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{@oauth2_provider[:client_id]}' '#{@oauth2_provider[:tenant_id]}' '#{@fqdn}'"
+                         }
+                       },
+                     ],
+                   }
+        end
 
         self
       end
@@ -93,135 +120,100 @@ module Terrafying
       end
 
       def openvpn_service
-        {
-          name: "openvpn.service",
-          contents: <<EOF
-[Install]
-WantedBy=multi-user.target
-
-[Unit]
-Description=OpenVPN server
-After=docker.service network-online.target openvpn-authz.service
-Requires=docker.service network-online.target openvpn-authz.service
-
-[Service]
-ExecStartPre=-/usr/bin/docker rm -f openvpn
-ExecStart=/usr/bin/docker run --name openvpn \
--v /etc/ssl/openvpn:/etc/ssl/openvpn:ro \
--v /etc/openvpn:/etc/openvpn \
---net=host \
--e DEBUG=1 \
---privileged \
-kylemanna/openvpn
-Restart=always
-RestartSec=30
-EOF
-        }
+        Ignition.container_unit(
+          "openvpn", "kylemanna/openvpn",
+          {
+            host_networking: true,
+            privileged: true,
+            volumes: [
+              "/etc/ssl/openvpn:/etc/ssl/openvpn:ro",
+              "/etc/openvpn:/etc/openvpn",
+            ],
+            required_units: [ "docker.service", "network-online.target", "openvpn-authz.service" ],
+          }
+        )
       end
 
       def openvpn_authz_service
-        {
-          name: "openvpn-authz.service",
-          contents: <<EOF
-[Install]
-WantedBy=multi-user.target
-
-[Unit]
-Description=OpenVPN authz
-After=docker.service
-Requires=docker.service
-
-[Service]
-ExecStartPre=-/usr/bin/docker rm -f openvpn-authz
-ExecStartPre=-/bin/mkdir -p /etc/ssl/openvpn /var/openvpn-authz
-ExecStart=/usr/bin/docker run --name openvpn-authz \
--v /etc/ssl/openvpn:/etc/ssl/openvpn \
--v /var/openvpn-authz:/var/openvpn-authz \
---net=host \
-quay.io/uswitch/openvpn-authz:latest \
---fqdn #{@fqdn} \
---cache /var/openvpn-authz \
-/etc/ssl/openvpn
-Restart=always
-RestartSec=30
-EOF
-        }
+        Ignition.container_unit(
+          "openvpn-authz", "quay.io/uswitch/openvpn-authz:latest",
+          {
+            host_networking: true,
+            volumes: [
+              "/etc/ssl/openvpn:/etc/ssl/openvpn",
+              "/var/openvpn-authz:/var/openvpn-authz",
+            ],
+            arguments: [
+              "--fqdn #{@fqdn}",
+              "--cache /var/openvpn-authz",
+              "/etc/ssl/openvpn",
+            ],
+          }
+        )
       end
 
-      def oauth2_proxy_service(cookie_secret)
-        {
+      def oauth2_proxy_service(oauth2_provider, cookie_secret)
+        optional_arguments = []
 
-          name: "oauth2_proxy.service",
-          contents: <<EOF
-[Install]
-WantedBy=multi-user.target
+        if oauth2_provider.has_key?(:permit_groups)
+          optional_arguments << "-permit-groups '#{oauth2_provider[:permit_groups].join(",")}'"
+        end
 
-[Unit]
-Description=oauth2 Proxy
-After=openvpn.service
-Requires=openvpn.service
-
-[Service]
-ExecStartPre=-/usr/bin/docker rm -f oauth_proxy2
-ExecStart=/usr/bin/docker run --name oauth_proxy2 \
---net=host \
-quay.io/uswitch/oauth2_proxy:stable \
--client-id='#{@client_id}' \
--client-secret='#{@client_secret}' \
--permit-groups='#{@group}' \
--email-domain='*' \
--cookie-secret='#{cookie_secret}' \
--provider=azure \
--http-address='0.0.0.0:4180' \
--redirect-url='https://#{@fqdn}/oauth2/callback' \
--upstream='http://localhost:8080' \
--approval-prompt='' \
--cookie-secure \
--pass-access-token=true \
--pass-groups
-Restart=always
-RestartSec=30
-
-EOF
-        }
+        Ignition.container_unit(
+          "oauth2_proxy", "quay.io/uswitch/oauth2_proxy:stable",
+          {
+            host_networking: true,
+            arguments: [
+              "-client-id='#{oauth2_provider[:client_id]}'",
+              "-client-secret='#{oauth2_provider[:client_secret]}'",
+              "-email-domain='*'",
+              "-cookie-secret='#{cookie_secret}'",
+              "-provider=#{oauth2_provider[:type]}",
+              "-http-address='0.0.0.0:4180'",
+              "-redirect-url='https://#{@fqdn}/oauth2/callback'",
+              "-upstream='http://localhost:8080'",
+              "-approval-prompt=''",
+              "-cookie-secure",
+              "-pass-access-token=true",
+              "-pass-groups",
+            ] + optional_arguments
+          }
+        )
       end
 
-      def caddy_service
-        {
-          name: "caddy.service",
-          contents: <<EOF
-[Install]
-WantedBy=multi-user.target
+      def caddy_service(ca)
+        optional_volumes = []
 
-[Unit]
-Description=Caddy
-After=oauth2_proxy.service
-Requires=oauth2_proxy.service
+        if ca
+          optional_volumes << "/etc/ssl/#{ca.name}:/etc/ssl/#{ca.name}:ro"
+        end
 
-[Service]
-ExecStartPre=-/usr/bin/docker rm -f caddy
-ExecStart=/usr/bin/docker run --name caddy \
--v /etc/ssl/certs:/etc/ssl/cert:ro \
--v /etc/caddy/Caddyfile:/etc/Caddyfile \
--v /etc/caddy/certs:/etc/caddy/certs \
--e "CADDYPATH=/etc/caddy/certs" \
---net=host \
-abiosoft/caddy:0.10.10
-Restart=always
-RestartSec=30
-
-EOF
-        }
+        Ignition.container_unit(
+          "caddy", "abiosoft/caddy:0.10.10",
+          {
+            host_networking: true,
+            volumes: [
+              "/etc/ssl/certs:/etc/ssl/cert:ro",
+              "/etc/caddy/Caddyfile:/etc/Caddyfile",
+              "/etc/caddy/certs:/etc/caddy/certs",
+            ] + optional_volumes,
+            environment_variables: [
+              "CADDYPATH=/etc/caddy/certs",
+            ],
+          }
+        )
       end
 
-      def caddy_conf
+      def caddy_conf(ca, has_provider)
+        port = has_provider ? "4180" : "8080"
+        tls = ca ? "/etc/ssl/#{ca.name}/#{@fqdn}/cert /etc/ssl/#{ca.name}/#{@fqdn}/key" : "cloud@uswitch.com"
         {
           path: "/etc/caddy/Caddyfile",
           mode: "0644",
           contents: <<EOF
-#{@fqdn}
-tls cloud@uswitch.com
-proxy / localhost:4180
+#{@fqdn}:443
+tls #{tls}
+proxy / localhost:#{port}
 EOF
       }
       end
