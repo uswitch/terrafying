@@ -88,6 +88,8 @@ module Terrafying
                                    depends_on: options[:instance_profile] ? [options[:instance_profile].id] : [],
                                  }
 
+        target_groups = options[:load_balancer] ? {target_group_arns: options[:load_balancer].target_groups} : {}
+
         if options[:pivot]
           options[:subnets].map.with_index { |subnet, i|
             resource :aws_autoscaling_group, "#{ident}-#{i}", {
@@ -104,7 +106,7 @@ module Terrafying
                          { key: k, value: v, propagate_at_launch: true }
                        },
                        depends_on: options[:depends_on],
-                     }.merge(target_groups ? {target_group_arns: target_groups} : {})
+                     }.merge(target_groups)
           }
         else
           resource :aws_autoscaling_group, ident, {
@@ -121,7 +123,7 @@ module Terrafying
                        { key: k, value: v, propagate_at_launch: true }
                      },
                      depends_on: options[:depends_on],
-                   }.merge(options[:load_balancer] ? {target_group_arns: options[:load_balancer].target_groups} : {})
+                   }.merge(target_groups)
         end
 
         self
