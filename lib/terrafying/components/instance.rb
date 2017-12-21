@@ -7,7 +7,7 @@ module Terrafying
 
     class Instance < Terrafying::Context
 
-      attr_reader :name, :ip_address, :security_group
+      attr_reader :id, :name, :ip_address, :subnet, :security_group
 
       include Usable
 
@@ -69,36 +69,36 @@ module Terrafying
         end
 
         if options.has_key? :subnet
-          subnet = options[:subnet]
+          @subnet = options[:subnet]
         else
           subnets = options.fetch(:subnets, vpc.subnets[:private])
           # pick something consistent but not just the first subnet
           subnet_index = XXhash.xxh32(ident) % subnets.count
-          subnet = subnets[subnet_index]
+          @subnet = subnets[subnet_index]
         end
 
-        resource :aws_instance, ident, {
-                   ami: options[:ami],
-                   instance_type: options[:instance_type],
-                   iam_instance_profile: options[:instance_profile] && options[:instance_profile].id,
-                   subnet_id: subnet.id,
-                   associate_public_ip_address: options[:public],
-                   root_block_device: {
-                     volume_type: 'gp2',
-                     volume_size: 32,
-                   },
-                   tags: {
-                     'Name' => ident,
-                   }.merge(options[:tags]),
-                   vpc_security_group_ids: [
-                     vpc.internal_ssh_security_group,
-                   ].push(*options[:security_groups]),
-                   user_data: options[:user_data],
-                   lifecycle: {
-                     create_before_destroy: true,
-                   },
-                   depends_on: options[:depends_on],
-                 }.merge(options[:ip_address] ? { private_ip: options[:ip_address] } : {}).merge(lifecycle)
+        @id = resource :aws_instance, ident, {
+                         ami: options[:ami],
+                         instance_type: options[:instance_type],
+                         iam_instance_profile: options[:instance_profile] && options[:instance_profile].id,
+                         subnet_id: @subnet.id,
+                         associate_public_ip_address: options[:public],
+                         root_block_device: {
+                           volume_type: 'gp2',
+                           volume_size: 32,
+                         },
+                         tags: {
+                           'Name' => ident,
+                         }.merge(options[:tags]),
+                         vpc_security_group_ids: [
+                           vpc.internal_ssh_security_group,
+                         ].push(*options[:security_groups]),
+                         user_data: options[:user_data],
+                         lifecycle: {
+                           create_before_destroy: true,
+                         },
+                         depends_on: options[:depends_on],
+                       }.merge(options[:ip_address] ? { private_ip: options[:ip_address] } : {}).merge(lifecycle)
 
         @ip_address = output_of(:aws_instance, ident, options[:public] ? :public_ip : :private_ip)
 

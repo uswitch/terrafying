@@ -93,7 +93,7 @@ module Terrafying
           options[:volumes].each.with_index { |volume, vol_i|
             volume_name = "#{instance_ident}-#{vol_i}"
             volume_id = resource :aws_ebs_volume, volume_name, {
-                                   availability_zone: subnet.az,
+                                   availability_zone: instance.subnet.az,
                                    size: volume[:size],
                                    type: volume.fetch(:type, "gp2"),
                                    tags: {
@@ -104,7 +104,7 @@ module Terrafying
             resource :aws_volume_attachment, volume_name, {
                        device_name: volume[:device],
                        volume_id: volume_id,
-                       instance_id: instance_id,
+                       instance_id: instance.id,
                        force_detach: true,
                      }
           }
