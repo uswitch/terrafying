@@ -85,9 +85,7 @@ module Terrafying
                                    lifecycle: {
                                      create_before_destroy: true,
                                    },
-                                   depends_on: [
-                                     "aws_iam_instance_profile.#{ident}",
-                                   ],
+                                   depends_on: options[:instance_profile] ? [options[:instance_profile].id] : [],
                                  }
 
         if options[:pivot]
