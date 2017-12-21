@@ -41,11 +41,11 @@ module Terrafying
 
         l4_ports = @ports.select{ |p| is_l4_port(p) }
 
-        if l4_ports.count > 0 && l4_ports.count < ports.count
+        if l4_ports.count > 0 && l4_ports.count < @ports.count
           raise 'Ports have to either be all layer 4 or 7'
         end
 
-        @type = l4_ports == 0 ? "application" : "network"
+        @type = l4_ports.count == 0 ? "application" : "network"
 
         ident = "#{type}-#{vpc.name}-#{name}"
 
