@@ -73,13 +73,13 @@ module Terrafying
 
         if options[:instances].is_a?(Hash)
 
-          @load_balancer = add! LoadBalancer.create_in(vpc, name, options[:ports], options)
+          @load_balancer = add! LoadBalancer.create_in(vpc, name, options)
           @instance_set = add! DynamicSet.create_in(
                                  vpc, name, options.merge({
                                    instance_profile: instance_profile,
                                    load_balancer: @load_balancer,
                                    depends_on: depends_on,
-                                 })
+                                 }),
                                )
 
           if @load_balancer == "application"
@@ -93,10 +93,12 @@ module Terrafying
         elsif options[:instances].is_a?(Array)
 
           @instance_set = add! StaticSet.create_in(
-                                 vpc, name, options.merge({
-                                   instance_profile: instance_profile,
-                                   depends_on: depends_on,
-                                                          }))
+                                 vpc, name, options.merge(
+                                   {
+                                     instance_profile: instance_profile,
+                                     depends_on: depends_on,
+                                   }),
+                               )
 
           @security_group = @instance_set.security_group
 
