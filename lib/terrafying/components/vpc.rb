@@ -9,6 +9,7 @@ module Terrafying
 
   module Components
     DEFAULT_SSH_GROUP = 'cloud-team'
+    DEFAULT_ZONE = "vpc.usw.co"
 
     class VPC < Terrafying::Context
 
@@ -64,7 +65,7 @@ module Terrafying
         }.merge(options)
 
         if options[:parent_zone].nil?
-          options[:parent_zone] = Zone.find("vpc.usw.co")
+          options[:parent_zone] = Zone.find(DEFAULT_ZONE)
         end
 
         if options[:subnets].nil?
@@ -88,14 +89,19 @@ module Terrafying
 
         cidr = NetAddr::CIDR.create(raw_cidr)
 
-        if @azs.count * 2 * options[:subnet_size] > cidr.size
-          raise "Not enough space for subnets in CIDR"
-        end
-
         @remaining_ip_space = NetAddr::Tree.new
         @remaining_ip_space.add! cidr
         @subnet_size = options[:subnet_size]
         @subnets = {}
+
+        per_az_subnet_size = options[:subnets].values.reduce(0) { |memo, s|
+          memo + (1 << (32 - s.fetch(:bit_size, @subnet_size)))
+        }
+        total_subnet_size = per_az_subnet_size * @azs.count
+
+        if total_subnet_size > cidr.size
+          raise "Not enough space for subnets in CIDR"
+        end
 
         @id = resource :aws_vpc, name, {
                          cidr_block: cidr.to_s,
@@ -160,6 +166,14 @@ module Terrafying
                                                       cidr_blocks: [@cidr],
                                                     },
                                                   ],
+                                                  egress: [
+                                                    {
+                                                      from_port: 22,
+                                                      to_port: 22,
+                                                      protocol: "tcp",
+                                                      cidr_blocks: [@cidr],
+                                                    },
+                                                  ],
                                                 }
         self
       end
@@ -167,7 +181,8 @@ module Terrafying
 
       def peer_with(other_vpc, options={})
         options = {
-          subnets: @subnets,
+          our_subnets: @subnets.values.flatten,
+          their_subnets: other_vpc.subnets.values.flatten,
         }.merge(options)
 
         other_vpc_ident = other_vpc.name.gsub(/[\s\.]/, "-")
@@ -186,8 +201,8 @@ module Terrafying
                                         tags: { Name: "#{@name} to #{other_vpc.name}" }.merge(@tags),
                                       }
 
-        our_route_tables = options[:subnets].map { |_, s| s.route_table }.sort.uniq
-        their_route_tables = other_vpc.subnets.map { |_, s| s.route_table }.sort.uniq
+        our_route_tables = options[:our_subnets].map(&:route_table).sort.uniq
+        their_route_tables = options[:their_subnets].map(&:route_table).sort.uniq
 
         our_route_tables.each.with_index { |route_table, i|
           resource :aws_route, "#{@name}-#{other_vpc_ident}-peer-#{i}", {
@@ -211,7 +226,13 @@ module Terrafying
           bit_size = 28
         end
 
-        target = @remaining_ip_space.find_space({ Subnet: bit_size })[0]
+        targets = @remaining_ip_space.find_space({ Subnet: bit_size })
+
+        if targets.count == 0
+          raise "Run out of ip space to allocate a /#{bit_size}"
+        end
+
+        target = targets[0]
 
         @remaining_ip_space.delete!(target)
 
@@ -235,14 +256,22 @@ module Terrafying
           internet: true,
         }.merge(options)
 
-        gateways = options[:public] ? [@internet_gateway] * @azs.count : @nat_gateways
+        if options[:public]
+          gateways = [@internet_gateway] * @azs.count
+        elsif options[:internet] && @nat_gateways != nil
+          gateways = @nat_gateways
+        else
+          gateways = [nil] * @azs.count
+        end
 
         @subnets[name] = @azs.zip(gateways).map { |az, gateway|
           subnet_options = { tags: { subnet_name: name }.merge(@tags) }
-          if options[:public]
-            subnet_options[:gateway] = gateway
-          elsif options[:internet]
-            subnet_options[:nat_gateway] = gateway
+          if gateway != nil
+            if options[:public]
+              subnet_options[:gateway] = gateway
+            elsif options[:internet]
+              subnet_options[:nat_gateway] = gateway
+            end
           end
 
           add! Terrafying::Components::Subnet.create_in(
