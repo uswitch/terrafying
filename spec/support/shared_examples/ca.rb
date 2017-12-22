@@ -82,6 +82,15 @@ shared_examples "a CA" do
       expect(objects).to all( be_a Hash )
     end
 
+    it "should reference resources that exist" do
+      keypair = @ca.create_keypair("foo")
+
+      expect(keypair[:resources].all? { |r|
+        type, name = r.split(".")
+        @ca.output["resource"][type].has_key? name
+      }).to be true
+    end
+
   end
 
   it "should be sortable" do

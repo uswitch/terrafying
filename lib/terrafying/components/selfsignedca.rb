@@ -53,7 +53,7 @@ module Terrafying
                    ],
                  }
 
-        resource :aws_s3_bucket_object, "#{@ident}-cert", {
+        resource :aws_s3_bucket_object, "#{@name}-cert", {
                    bucket: @bucket,
                    key: File.join(@prefix, @name, "ca.cert"),
                    content: output_of(:tls_self_signed_cert, @ident, :cert_pem),
@@ -121,7 +121,7 @@ module Terrafying
                        content: output_of(:tls_locally_signed_cert, key_ident, :cert_pem),
                      }
 
-        reference_keypair(name)
+        reference_keypair(ctx, name)
       end
 
     end
