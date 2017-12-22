@@ -54,7 +54,7 @@ module Terrafying
         resource :aws_s3_bucket_object, "#{@name}-cert", {
                    bucket: @bucket,
                    key: File.join(@prefix, @name, "ca.cert"),
-                   content: "",
+                   content: "we don't care as it's trusted, just want parity",
                  }
 
         @source = File.join("s3://", @bucket, @prefix, @name, "ca.cert")
@@ -116,7 +116,7 @@ module Terrafying
                        content: output_of(:acme_certificate, key_ident, :certificate_pem),
                      }
 
-        reference_keypair(name)
+        reference_keypair(ctx, name)
       end
 
     end
