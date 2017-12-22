@@ -9,10 +9,11 @@ module Terrafying
 
   module Components
     DEFAULT_SSH_GROUP = 'cloud-team'
+    DEFAULT_ZONE = "vpc.usw.co"
 
     class VPC < Terrafying::Context
 
-      attr_reader :id, :name, :cidr, :zone, :azs, :private_subnets, :public_subnets, :internal_ssh_security_group, :ssh_group
+      attr_reader :id, :name, :cidr, :zone, :azs, :subnets, :internal_ssh_security_group, :ssh_group
 
       def self.find(name)
         VPC.new.find name
@@ -55,7 +56,8 @@ module Terrafying
 
       def create(name, raw_cidr, options={})
         options = {
-          subnet_size: 256 - CIDR_PADDING,
+          subnet_size: 24,
+          internet_access: true,
           nat_eips: [],
           azs: aws.availability_zones,
           tags: {},
@@ -63,7 +65,20 @@ module Terrafying
         }.merge(options)
 
         if options[:parent_zone].nil?
-          options[:parent_zone] = Zone.find("vpc.usw.co")
+          options[:parent_zone] = Zone.find(DEFAULT_ZONE)
+        end
+
+        if options[:subnets].nil?
+          if options[:internet_access]
+            options[:subnets] = {
+              public: { public: true },
+              private: { internet: true },
+            }
+          else
+            options[:subnets] = {
+              private: { },
+            }
+          end
         end
 
         @name = name
@@ -74,18 +89,19 @@ module Terrafying
 
         cidr = NetAddr::CIDR.create(raw_cidr)
 
-        if @azs.count * 2 * options[:subnet_size] > cidr.size
-          raise "Not enough space for subnets in CIDR"
-        end
-
-        if options[:nat_eips].size == 0
-          options[:nat_eips] = @azs.map{ |az| resource :aws_eip, "#{name}-nat-gateway-#{az}", { vpc: true } }
-        elsif options[:nat_eips].size != @azs.count
-          raise "The nubmer of nat eips has to match the number of AZs"
-        end
-
         @remaining_ip_space = NetAddr::Tree.new
         @remaining_ip_space.add! cidr
+        @subnet_size = options[:subnet_size]
+        @subnets = {}
+
+        per_az_subnet_size = options[:subnets].values.reduce(0) { |memo, s|
+          memo + (1 << (32 - s.fetch(:bit_size, @subnet_size)))
+        }
+        total_subnet_size = per_az_subnet_size * @azs.count
+
+        if total_subnet_size > cidr.size
+          raise "Not enough space for subnets in CIDR"
+        end
 
         @id = resource :aws_vpc, name, {
                          cidr_block: cidr.to_s,
@@ -110,23 +126,32 @@ module Terrafying
                  }
 
 
-        @internet_gateway = resource :aws_internet_gateway, name, {
-                                       vpc_id: @id,
-                                       tags: {
-                                         Name: name,
-                                       }.merge(@tags)
-                                     }
+        if options[:internet_access]
 
-        @public_subnets = allocate_subnets("public", options[:subnet_size], { public: true })
+          if options[:nat_eips].size == 0
+            options[:nat_eips] = @azs.map{ |az| resource :aws_eip, "#{name}-nat-gateway-#{az}", { vpc: true } }
+          elsif options[:nat_eips].size != @azs.count
+            raise "The nubmer of nat eips has to match the number of AZs"
+          end
 
-        @nat_gateways = @azs.zip(@public_subnets, options[:nat_eips]).map { |az, public_subnet, eip|
-          resource :aws_nat_gateway, "#{name}-#{az}", {
-                     allocation_id: eip,
-                     subnet_id: public_subnet.id,
-                   }
-        }
+          @internet_gateway = resource :aws_internet_gateway, name, {
+                                         vpc_id: @id,
+                                         tags: {
+                                           Name: name,
+                                         }.merge(@tags)
+                                       }
+          allocate_subnets!(:nat_gateway, { bit_size: 28, public: true })
 
-        @private_subnets = allocate_subnets("private", options[:subnet_size])
+          @nat_gateways = @azs.zip(@subnets[:nat_gateway], options[:nat_eips]).map { |az, subnet, eip|
+            resource :aws_nat_gateway, "#{name}-#{az}", {
+                       allocation_id: eip,
+                       subnet_id: subnet.id,
+                     }
+          }
+
+        end
+
+        options[:subnets].each { |key, config| allocate_subnets! key, config }
 
         @internal_ssh_security_group = resource :aws_security_group, "#{name}-internal-ssh", {
                                                   name: "#{name}-internal-ssh",
@@ -141,12 +166,25 @@ module Terrafying
                                                       cidr_blocks: [@cidr],
                                                     },
                                                   ],
+                                                  egress: [
+                                                    {
+                                                      from_port: 22,
+                                                      to_port: 22,
+                                                      protocol: "tcp",
+                                                      cidr_blocks: [@cidr],
+                                                    },
+                                                  ],
                                                 }
         self
       end
 
 
-      def peer_with(other_vpc)
+      def peer_with(other_vpc, options={})
+        options = {
+          our_subnets: @subnets.values.flatten,
+          their_subnets: other_vpc.subnets.values.flatten,
+        }.merge(options)
+
         other_vpc_ident = other_vpc.name.gsub(/[\s\.]/, "-")
 
         our_cidr = NetAddr::CIDR.create(@cidr)
@@ -163,10 +201,8 @@ module Terrafying
                                         tags: { Name: "#{@name} to #{other_vpc.name}" }.merge(@tags),
                                       }
 
-        our_route_tables = (@public_subnets.map { |s| s.route_table } + \
-                            @private_subnets.map { |s| s.route_table }).sort.uniq
-        their_route_tables = (other_vpc.public_subnets.map { |s| s.route_table } + \
-                              other_vpc.private_subnets.map { |s| s.route_table }).sort.uniq
+        our_route_tables = options[:our_subnets].map(&:route_table).sort.uniq
+        their_route_tables = options[:their_subnets].map(&:route_table).sort.uniq
 
         our_route_tables.each.with_index { |route_table, i|
           resource :aws_route, "#{@name}-#{other_vpc_ident}-peer-#{i}", {
@@ -185,25 +221,25 @@ module Terrafying
         }
       end
 
-      def extract_subnet!(size)
-        # AWS steals the first couple of IP addresses so to honour the size
-        # add some padding
-        size += CIDR_PADDING
-
-        # AWS only allows subnets of at least /28, so need to pin this size
-        # to at least 16 :(
-        if size < 16
-          size = 16
+      def extract_subnet!(bit_size)
+        if bit_size > 28  # aws can't have smaller
+          bit_size = 28
         end
 
-        target = @remaining_ip_space.find_space({ IPCount: size })[0]
+        targets = @remaining_ip_space.find_space({ Subnet: bit_size })
+
+        if targets.count == 0
+          raise "Run out of ip space to allocate a /#{bit_size}"
+        end
+
+        target = targets[0]
 
         @remaining_ip_space.delete!(target)
 
-        if target.size == size
+        if target.bits == bit_size
           new_subnet = target
         else
-          new_subnet = target.subnet({ IPCount: size, Objectify: true })[0]
+          new_subnet = target.subnet({ Bits: bit_size, Objectify: true })[0]
 
           target.remainder(new_subnet).each { |rem|
             @remaining_ip_space.add!(rem)
@@ -213,17 +249,33 @@ module Terrafying
         return new_subnet.to_s
       end
 
-      def allocate_subnets(name, size, options = {})
+      def allocate_subnets!(name, options = {})
         options = {
           public: false,
+          bit_size: @subnet_size,
+          internet: true,
         }.merge(options)
 
-        gateways = options[:public] ? [@internet_gateway] * @azs.count : @nat_gateways
+        if options[:public]
+          gateways = [@internet_gateway] * @azs.count
+        elsif options[:internet] && @nat_gateways != nil
+          gateways = @nat_gateways
+        else
+          gateways = [nil] * @azs.count
+        end
 
-        @azs.zip(gateways).map { |az, gateway|
+        @subnets[name] = @azs.zip(gateways).map { |az, gateway|
+          subnet_options = { tags: { subnet_name: name }.merge(@tags) }
+          if gateway != nil
+            if options[:public]
+              subnet_options[:gateway] = gateway
+            elsif options[:internet]
+              subnet_options[:nat_gateway] = gateway
+            end
+          end
+
           add! Terrafying::Components::Subnet.create_in(
-                 self, name, az, extract_subnet!(size),
-                 { tags: @tags }.merge(options[:public] ? { gateway: gateway } : { nat_gateway: gateway }),
+                 self, name, az, extract_subnet!(options[:bit_size]), subnet_options
                )
         }
       end

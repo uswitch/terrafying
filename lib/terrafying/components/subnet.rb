@@ -75,13 +75,16 @@ module Terrafying
           gateway = { gateway_id: options[:gateway] }
           @public = true
         else
-          raise "You have to give a subnet either a nat or internet gateway"
+          gateway = nil
+          @public = false
         end
 
-        resource :aws_route, "#{name}-default", {
-                   route_table_id: @route_table,
-                   destination_cidr_block: "0.0.0.0/0",
-                 }.merge(gateway)
+        if gateway
+          resource :aws_route, "#{name}-default", {
+                     route_table_id: @route_table,
+                     destination_cidr_block: "0.0.0.0/0",
+                   }.merge(gateway)
+        end
 
         resource :aws_route_table_association, name, {
                    subnet_id: @id,

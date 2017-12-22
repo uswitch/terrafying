@@ -69,7 +69,7 @@ systemd:
     <% units.each { |unit| %>
     - name: "<%= unit[:name] %>"
       enabled: true
-      contents: "<%= unit[:contents].gsub(/\n/, '\\n').gsub(/\"/, '\\"') %>"
+      contents: "<%= unit[:contents].dump[1..-2] %>"
     <% } %>
 
 
