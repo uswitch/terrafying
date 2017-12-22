@@ -12,8 +12,8 @@ module Terrafying
 
       include CA
 
-      def self.create(bucket, options={})
-        LetsEncrypt.new.create bucket, options
+      def self.create(name, bucket, options={})
+        LetsEncrypt.new.create name, bucket, options
       end
 
       def initialize()
