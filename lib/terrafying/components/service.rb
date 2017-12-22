@@ -116,6 +116,23 @@ module Terrafying
         self
       end
 
+      def with_endpoint_service(options = {})
+        options = {
+          acceptance_required: true,
+          allowed_principals: [],
+        }.merge(options)
+
+        if ! @load_balancer or @load_balancer.type != "network"
+          raise "The service needs a network load balancer to create an endpoint service"
+        end
+
+        resource :aws_vpc_endpoint_service, @name, {
+                   acceptance_required: options[:acceptance_required],
+                   allowed_principals: options[:allowed_principals],
+                   network_load_balancer_arns: [@load_balancer.id],
+                 }
+      end
+
     end
 
   end
