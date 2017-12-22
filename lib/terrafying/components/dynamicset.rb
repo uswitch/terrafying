@@ -85,7 +85,7 @@ module Terrafying
                                    lifecycle: {
                                      create_before_destroy: true,
                                    },
-                                   depends_on: options[:instance_profile] ? [options[:instance_profile].id] : [],
+                                   depends_on: options[:instance_profile] ? options[:instance_profile].resource_names : [],
                                  }
 
         target_groups = options[:load_balancer] ? {target_group_arns: options[:load_balancer].target_groups} : {}
