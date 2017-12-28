@@ -40,7 +40,7 @@ module Terrafying
           raise "Failed to find zone"
         end
 
-        @subnets = aws.subnets_for_vpc(vpc.vpc_id).reduce(Hash.new([])) { |out, subnet|
+        @subnets = aws.subnets_for_vpc(vpc.vpc_id).each_with_object({}) { |subnet, subnets|
           subnet_inst = Subnet.find(subnet.subnet_id)
 
           subnet_name_tag = subnet.tags.detect { |tag| tag.key == "subnet_name" }
@@ -51,8 +51,11 @@ module Terrafying
             key = subnet_inst.public ? :public : :private
           end
 
-          out[key] << subnet_inst
-          out
+          if subnets.has_key?(key)
+            subnets[key] << subnet_inst
+          else
+            subnets[key] = [ subnet_inst ]
+          end
         }
 
         # need to sort subnets so they are in az order
@@ -196,15 +199,16 @@ module Terrafying
 
       def peer_with(other_vpc, options={})
         options = {
-          our_subnets: @subnets.values.flatten,
-          their_subnets: other_vpc.subnets.values.flatten,
+          peerings: [
+            { from: @subnets.values.flatten, to: other_vpc.subnets.values.flatten },
+            { from: other_vpc.subnets.values.flatten, to: @subnets.values.flatten },
+          ],
         }.merge(options)
 
         other_vpc_ident = other_vpc.name.gsub(/[\s\.]/, "-")
 
         our_cidr = NetAddr::CIDR.create(@cidr)
         other_cidr = NetAddr::CIDR.create(other_vpc.cidr)
-
         if our_cidr.contains? other_cidr[0] or our_cidr.contains? other_cidr.last
           raise "VPCs to be peered have overlapping CIDRs"
         end
@@ -216,23 +220,20 @@ module Terrafying
                                         tags: { Name: "#{@name} to #{other_vpc.name}" }.merge(@tags),
                                       }
 
-        our_route_tables = options[:our_subnets].map(&:route_table).sort.uniq
-        their_route_tables = options[:their_subnets].map(&:route_table).sort.uniq
+        options[:peerings].each.with_index { |peering, i|
+          route_tables = peering[:from].map(&:route_table).sort.uniq
+          cidrs = peering[:to].map(&:cidr).sort.uniq
 
-        our_route_tables.each.with_index { |route_table, i|
-          resource :aws_route, "#{@name}-#{other_vpc_ident}-peer-#{i}", {
-                     route_table_id: route_table,
-                     destination_cidr_block: other_vpc.cidr,
-                     vpc_peering_connection_id: peering_connection,
-                   }
-        }
+          route_tables.product(cidrs).each { |route_table, cidr|
 
-        their_route_tables.each.with_index { |route_table, i|
-          resource :aws_route, "#{other_vpc_ident}-#{@name}-peer-#{i}", {
-                     route_table_id: route_table,
-                     destination_cidr_block: @cidr,
-                     vpc_peering_connection_id: peering_connection,
-                   }
+            hash = Digest::SHA2.hexdigest "#{route_table}-#{cidr.gsub(/[\.\/]/, "-")}"
+
+            resource :aws_route, "#{@name}-#{other_vpc_ident}-peer-#{hash}", {
+                       route_table_id: route_table,
+                       destination_cidr_block: cidr,
+                       vpc_peering_connection_id: peering_connection,
+                     }
+          }
         }
       end
 
