@@ -112,6 +112,10 @@ module Terrafying
                  }
       end
 
+      def add_cname(name, *records)
+        add_cname_in(self, name, *records)
+      end
+
       def add_cname_in(ctx, name, *records)
         fqdn = qualify(name)
         ident = fqdn.tr('.', '-')
