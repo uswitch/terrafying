@@ -104,6 +104,24 @@ RSpec.describe Terrafying::Components::Ignition, '#generate' do
            end).to be true
   end
 
+  it "adds in drops not just contents into units" do
+    user_data = Terrafying::Components::Ignition.generate(
+      {
+        units: [{ name: "docker.service", dropins: [{contents: "LOL", name: "10-lol.conf"}] }],
+      }
+    )
+
+    units = JSON.parse(user_data, { symbolize_names: true })[:systemd][:units]
+
+    expect(units.any? do |unit|
+             unit == {
+               name: 'docker.service',
+               enabled: true,
+               dropins: [{contents: "LOL", name: "10-lol.conf"}],
+             }
+           end).to be true
+  end
+
   it "adds in files" do
     user_data = Terrafying::Components::Ignition.generate(
       {

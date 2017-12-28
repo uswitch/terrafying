@@ -68,8 +68,13 @@ systemd:
 
     <% units.each { |unit| %>
     - name: "<%= unit[:name] %>"
-      enabled: true
-      contents: "<%= unit[:contents].dump[1..-2] %>"
+      enabled: true<% if unit.has_key?(:contents) %>
+      contents: "<%= unit[:contents].dump[1..-2] %>"<% end %><% if unit.has_key?(:dropins) %>
+      dropins:
+        <% unit[:dropins].each { |dropin| %>
+        - contents: "<%= dropin[:contents].dump[1..-2] %>"
+          name: "<%= dropin[:name] %>"
+        <% } %><% end %>
     <% } %>
 
 
