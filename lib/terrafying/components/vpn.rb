@@ -113,10 +113,6 @@ module Terrafying
         self
       end
 
-      def used_by_cidr(*cidrs)
-        @service.used_by_cidr(*cidrs)
-      end
-
       def openvpn_service
         Ignition.container_unit(
           "openvpn", "kylemanna/openvpn",
@@ -261,6 +257,18 @@ EOF
 declare -x OVPN_SERVER=#{@cidr}
 EOF
         }
+      end
+
+      def security_group
+        @service.security_group
+      end
+
+      def used_by(*services)
+        @service.used_by(*services)
+      end
+
+      def used_by_cidr(*cidrs)
+        @service.used_by_cidr(*cidrs)
       end
 
     end
