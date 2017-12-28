@@ -31,9 +31,6 @@ module Terrafying
       def find(name)
         vpc = aws.vpc(name)
 
-        subnets = aws.subnets_for_vpc(vpc.vpc_id).map { |subnet|
-          Subnet.find(subnet.subnet_id)
-        }.sort { |s1, s2| s2.id <=> s1.id }
 
         @name = name
         @id = vpc.vpc_id
@@ -42,14 +39,32 @@ module Terrafying
         if @zone.nil?
           raise "Failed to find zone"
         end
-        @public_subnets = subnets.select { |s| s.public }
-        @private_subnets = subnets.select { |s| !s.public }
+
+        @subnets = aws.subnets_for_vpc(vpc.vpc_id).reduce(Hash.new([])) { |out, subnet|
+          subnet_inst = Subnet.find(subnet.subnet_id)
+
+          subnet_name_tag = subnet.tags.detect { |tag| tag.key == "subnet_name" }
+
+          if subnet_name_tag
+            key = subnet_name_tag.value.to_sym
+          else
+            key = subnet_inst.public ? :public : :private
+          end
+
+          out[key] << subnet_inst
+          out
+        }
+
+        # need to sort subnets so they are in az order
+        @subnets.each { |_, s| s.sort! { |a, b| a.az <=> b.az } }
+
         tags = vpc.tags.select { |tag| tag.key == "ssh_group"}
         if tags.count > 0
           @ssh_group = tags[0].value
         else
           @ssh_group = DEFAULT_SSH_GROUP
         end
+
         @internal_ssh_security_group = aws.security_group("#{name.gsub(/[\s\.]/,"-")}-internal-ssh")
         self
       end
