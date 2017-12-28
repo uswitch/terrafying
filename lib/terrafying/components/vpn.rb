@@ -78,13 +78,24 @@ module Terrafying
         @service = add! Service.create_in(
                           vpc, name,
                           {
-                            public: true,
+                            public: options[:public],
                             ports: [22, 443, { number: 1194, type: "udp" }],
                             tags: options[:tags],
                             units: units,
                             files: files,
                             keypairs: keypairs,
                             subnets: options[:subnets],
+                            iam_policy_statements: [
+                              {
+                                Effect: "Allow",
+                                Action: [
+                                  "ec2:DescribeRouteTables",
+                                ],
+                                Resource: [
+                                  "*"
+                                ]
+                              }
+                            ],
                           }
                         )
 
@@ -136,6 +147,9 @@ module Terrafying
             volumes: [
               "/etc/ssl/openvpn:/etc/ssl/openvpn",
               "/var/openvpn-authz:/var/openvpn-authz",
+            ],
+            environment_variables: [
+              "AWS_REGION=#{aws.region}",
             ],
             arguments: [
               "--fqdn #{@fqdn}",
@@ -243,8 +257,6 @@ status /tmp/openvpn-status.log
 
 user nobody
 group nogroup
-
-push "route #{cidr_to_split_address(@vpc.cidr)}"
 EOF
         }
       end

@@ -5,14 +5,19 @@ Aws.use_bundled_cert!
 module Terrafying
   module Aws
     class Ops
-      def initialize
+
+      attr_reader :region
+
+      def initialize(region)
         ::Aws.config.update({
-          region: 'eu-west-1'
+          region: region
         })
         @ec2_resource = ::Aws::EC2::Resource.new
         @ec2_client = ::Aws::EC2::Client.new
         @route53_client = ::Aws::Route53::Client.new
         @s3_client = ::Aws::S3::Client.new
+
+        @region = region
       end
 
       def security_group(name)
@@ -346,10 +351,6 @@ module Terrafying
             resp.contents
           end
       end
-    end
-
-    def aws
-      @@ops ||= Ops.new
     end
 
   end
