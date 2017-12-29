@@ -44,6 +44,7 @@ module Terrafying
           cidr: "10.8.0.0/24",
           public: true,
           subnets: vpc.subnets.fetch(:public, []),
+          route_all_traffic: false,
           tags: {}
         }.merge(options)
 
@@ -54,8 +55,16 @@ module Terrafying
 
         has_oauth2_provider = options.has_key? :oauth2_provider
 
-        units = [openvpn_service, openvpn_authz_service, caddy_service(options[:ca])]
-        files = [openvpn_conf, openvpn_env, caddy_conf(options[:ca], has_oauth2_provider)]
+        units = [
+          openvpn_service,
+          openvpn_authz_service(options[:route_all_traffic]),
+          caddy_service(options[:ca])
+        ]
+        files = [
+          openvpn_conf,
+          openvpn_env,
+          caddy_conf(options[:ca], has_oauth2_provider)
+        ]
         keypairs = []
 
         if has_oauth2_provider
@@ -139,7 +148,13 @@ module Terrafying
         )
       end
 
-      def openvpn_authz_service
+      def openvpn_authz_service(route_all_traffic)
+        optional_arguments = []
+
+        if route_all_traffic
+          optional_arguments << "--route-all"
+        end
+
         Ignition.container_unit(
           "openvpn-authz", "quay.io/uswitch/openvpn-authz:latest",
           {
@@ -151,7 +166,7 @@ module Terrafying
             environment_variables: [
               "AWS_REGION=#{aws.region}",
             ],
-            arguments: [
+            arguments: optional_arguments + [
               "--fqdn #{@fqdn}",
               "--cache /var/openvpn-authz",
               "/etc/ssl/openvpn",
