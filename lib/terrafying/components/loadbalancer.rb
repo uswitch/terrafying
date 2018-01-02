@@ -1,5 +1,6 @@
 
 require 'terrafying/components/usable'
+require 'terrafying/generator'
 
 require_relative './ports'
 
@@ -26,7 +27,34 @@ module Terrafying
       end
 
       def find_in(vpc, name)
-        raise 'unimplemented'
+        ident = "network-#{vpc.name}-#{name}"
+        @type = "network"
+
+        begin
+          lb = aws.lb_by_name(ident)
+        rescue
+          ident = "application-#{vpc.name}-#{name}"
+          @type = "application"
+
+          lb = aws.lb_by_name(ident)
+
+          @security_group = aws.security_group_by_tags({ loadbalancer_name: ident })
+        end
+
+        @id = lb.load_balancer_arn
+
+        target_groups = aws.target_groups_by_lb(@id)
+
+        @target_groups = target_groups.map(&:target_group_arn)
+        @ports = enrich_ports(target_groups.map(&:port).sort.uniq)
+
+        @alias_config = {
+          name: lb.dns_name,
+          zone_id: lb.canonical_hosted_zone_id,
+          evaluate_target_health: true,
+        }
+
+        self
       end
 
       def create_in(vpc, name, options={})
@@ -53,7 +81,11 @@ module Terrafying
           @security_group = resource :aws_security_group, ident, {
                                        name: "loadbalancer-#{ident}",
                                        description: "Describe the ingress and egress of the load balancer #{ident}",
-                                       tags: options[:tags],
+                                       tags: options[:tags].merge(
+                                         {
+                                           loadbalancer_name: ident,
+                                         }
+                                       ),
                                        vpc_id: vpc.id,
                                      }
         end

@@ -1,5 +1,7 @@
 
+require 'terrafying/components/loadbalancer'
 require 'terrafying/components/usable'
+require 'terrafying/components/vpc'
 require 'terrafying/generator'
 
 module Terrafying
@@ -20,7 +22,7 @@ module Terrafying
         super
       end
 
-      def create_in(vpc, name, service_name, options={})
+      def create_in(vpc, name, options={})
         options = {
           auto_accept: true,
           subnets: vpc.subnets.fetch(:private, []),
@@ -30,7 +32,21 @@ module Terrafying
         ident = "#{vpc.name}-#{name}"
         @name = name
 
-        endpoint_service = aws.endpoint_service_by_name(service_name)
+        if options[:service_name]
+          endpoint_service = aws.endpoint_service_by_name(options[:service_name])
+        elsif options[:source]
+          if options[:source].is_a?(VPC)
+            source = { vpc: options[:source], name: name }
+          else
+            source = options[:source]
+          end
+
+          lb = LoadBalancer.find_in(source[:vpc], source[:name])
+
+          endpoint_service = aws.endpoint_service_by_lb_arn(lb.id)
+        else
+          raise "You need to pass either a service_name or source option to create an endpoint"
+        end
 
         target_groups = endpoint_service.network_load_balancer_arns.map { |arn|
           aws.target_groups_by_lb(arn)
@@ -46,7 +62,7 @@ module Terrafying
 
         resource :aws_vpc_endpoint, ident, {
                    vpc_id: vpc.id,
-                   service_name: service_name,
+                   service_name: endpoint_service.service_name,
                    vpc_endpoint_type: "Interface",
                    security_group_ids: [ @security_group ],
                    auto_accept: options[:auto_accept],

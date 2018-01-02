@@ -72,15 +72,26 @@ module Terrafying
         iam_statements = options[:iam_policy_statements] + options[:keypairs].map { |kp| kp[:iam_statement] }
         instance_profile = add! InstanceProfile.create(ident, { statements: iam_statements })
 
+        tags = options[:tags].merge({ service_name: name })
+
         if options[:instances].is_a?(Hash)
 
-          @load_balancer = add! LoadBalancer.create_in(vpc, name, options)
+          @load_balancer = add! LoadBalancer.create_in(
+                                  vpc, name, options.merge(
+                                    {
+                                      tags: tags,
+                                    }
+                                  ),
+                                )
           @instance_set = add! DynamicSet.create_in(
-                                 vpc, name, options.merge({
-                                   instance_profile: instance_profile,
-                                   load_balancer: @load_balancer,
-                                   depends_on: depends_on,
-                                 }),
+                                 vpc, name, options.merge(
+                                   {
+                                     instance_profile: instance_profile,
+                                     load_balancer: @load_balancer,
+                                     depends_on: depends_on,
+                                     tags: tags,
+                                   }
+                                 ),
                                )
 
           if @load_balancer == "application"
@@ -98,6 +109,7 @@ module Terrafying
                                    {
                                      instance_profile: instance_profile,
                                      depends_on: depends_on,
+                                     tags: tags,
                                    }),
                                )
 

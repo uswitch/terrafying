@@ -46,6 +46,35 @@ module Terrafying
           end
       end
 
+      def security_group_by_tags(tags)
+        @security_groups_by_tags ||= {}
+        @security_groups_by_tags[tags] ||=
+          begin
+            groups = @ec2_client.describe_security_groups(
+              {
+                filters: [
+                  {
+                    name: "tag-key",
+                    values: tags.keys,
+                  },
+                  {
+                    name: "tag-value",
+                    values: tags.values
+                  }
+                ]
+              },
+            ).security_groups
+            case
+            when groups.count == 1
+              groups.first.id
+            when groups.count < 1
+              raise "No security group with tags '#{tags}' was found."
+            when groups.count > 1
+              raise "More than one security group with tags '#{tags}' found: " + groups.join(', ')
+            end
+          end
+      end
+
       def instance_profile(name)
         @instance_profiles ||= {}
         @instance_profiles[name] ||=
@@ -381,6 +410,41 @@ module Terrafying
       end
 
       def endpoint_service_by_lb_arn(arn)
+        @endpoint_services_by_lb_arn ||= {}
+        @endpoint_services_by_lb_arn[arn] ||=
+          begin
+            resp = @ec2_client.describe_vpc_endpoint_service_configurations
+
+            services = resp.service_configurations.select { |service|
+              service.network_load_balancer_arns.include?(arn)
+            }
+
+            case
+            when services.count == 1
+              services.first
+            when services.count < 1
+              raise "No endpoint service with lb arn '#{arn}' was found."
+            when services.count > 1
+              raise "More than one endpoint service with lb arn '#{arn}' was found: " + services.join(', ')
+            end
+          end
+      end
+
+      def lb_by_name(name)
+        @lbs ||= {}
+        @lbs[name] ||=
+          begin
+            load_balancers = @elb_client.describe_load_balancers({ names: [name] }).load_balancers
+
+            case
+            when load_balancers.count == 1
+              load_balancers.first
+            when load_balancers.count < 1
+              raise "No load balancer with name '#{name}' was found."
+            when load_balancers.count > 1
+              raise "More than one load balancer with name '#{name}' was found: " + load_balancers.join(', ')
+            end
+          end
       end
 
       def target_groups_by_lb(arn)
