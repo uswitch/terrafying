@@ -167,8 +167,11 @@ RSpec.describe Terrafying::Components::Ignition, '#generate' do
       }
     )
 
-    files = JSON.parse(user_data, { symbolize_names: true })[:storage][:files]
-    paths = files.map { |f| f[:path] }
+    units = JSON.parse(user_data, { symbolize_names: true })[:systemd][:units]
+
+    certs_unit = units.select { |u| u[:name] == "download-certs.service" }.first
+
+    paths = certs_unit[:contents].scan(/\/etc\/ssl\/[^\/]+\/[a-z\.]+[\/\.][a-z\.]+/)
 
     expect(paths).to include("/etc/ssl/great-ca/ca.cert", "/etc/ssl/great-ca/foo/key", "/etc/ssl/great-ca/foo/cert")
   end
