@@ -14,6 +14,7 @@ module Terrafying
         })
         @ec2_resource = ::Aws::EC2::Resource.new
         @ec2_client = ::Aws::EC2::Client.new
+        @elb_client = ::Aws::ElasticLoadBalancingV2::Client.new
         @route53_client = ::Aws::Route53::Client.new
         @s3_client = ::Aws::S3::Client.new
 
@@ -349,6 +350,50 @@ module Terrafying
           begin
             resp = @s3_client.list_objects_v2({ bucket: bucket })
             resp.contents
+          end
+      end
+
+      def endpoint_service_by_name(service_name)
+        @endpoint_service ||= {}
+        @endpoint_service[service_name] ||=
+          begin
+            resp = @ec2_client.describe_vpc_endpoint_service_configurations(
+              {
+                filters: [
+                  {
+                    name: "service-name",
+                    values: [service_name],
+                  },
+                ],
+              }
+            )
+
+            endpoint_services = resp.service_configurations
+            case
+            when endpoint_services.count == 1
+              endpoint_services.first
+            when endpoint_services.count < 1
+              raise "No endpoint service with name '#{service_name}' was found."
+            when endpoint_services.count > 1
+              raise "More than one endpoint service with name '#{service_name}' was found: " + endpoint_services.join(', ')
+            end
+          end
+      end
+
+      def endpoint_service_by_lb_arn(arn)
+      end
+
+      def target_groups_by_lb(arn)
+        @target_groups ||= {}
+        @target_groups[arn] ||=
+          begin
+            resp = @elb_client.describe_target_groups(
+              {
+                load_balancer_arn: arn,
+              }
+            )
+
+            resp.target_groups
           end
       end
     end

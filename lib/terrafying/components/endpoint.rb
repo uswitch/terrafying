@@ -28,8 +28,15 @@ module Terrafying
         }.merge(options)
 
         ident = "#{vpc.name}-#{name}"
+        @name = name
 
-        @ports = [-1]
+        endpoint_service = aws.endpoint_service_by_name(service_name)
+
+        target_groups = endpoint_service.network_load_balancer_arns.map { |arn|
+          aws.target_groups_by_lb(arn)
+        }.flatten
+
+        @ports = enrich_ports(target_groups.map(&:port))
         @security_group = resource :aws_security_group, ident, {
                                      name: "endpoint-#{ident}",
                                      description: "Describe the ingress and egress of the endpoint #{ident}",
