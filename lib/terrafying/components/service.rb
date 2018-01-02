@@ -61,6 +61,14 @@ module Terrafying
           options[:user_data] = Ignition.generate(options)
         end
 
+        if ! options.has_key?(:loadbalancer_subnets)
+          options[:loadbalancer_subnets] = options[:subnets]
+        end
+
+        unless options[:instances].is_a?(Hash) or options[:instances].is_a?(Array)
+          raise 'Unknown instances option, should be hash or array'
+        end
+
         ident = "#{vpc.name}-#{name}"
 
         @name = ident
@@ -74,56 +82,43 @@ module Terrafying
 
         tags = options[:tags].merge({ service_name: name })
 
-        if options[:instances].is_a?(Hash)
+        set = options[:instances].is_a?(Hash) ? DynamicSet : StaticSet
 
+        @instance_set = add! set.create_in(
+                               vpc, name, options.merge(
+                                 {
+                                   instance_profile: instance_profile,
+                                   depends_on: depends_on,
+                                   tags: tags,
+                                 }
+                               ),
+                             )
+        @security_group = @instance_set.security_group
+
+        wants_load_balancer = options[:instances].is_a?(Hash) || options[:loadbalancer]
+
+        if wants_load_balancer
           @load_balancer = add! LoadBalancer.create_in(
                                   vpc, name, options.merge(
                                     {
+                                      subnets: options[:loadbalancer_subnets],
                                       tags: tags,
                                     }
                                   ),
                                 )
-          @instance_set = add! DynamicSet.create_in(
-                                 vpc, name, options.merge(
-                                   {
-                                     instance_profile: instance_profile,
-                                     load_balancer: @load_balancer,
-                                     depends_on: depends_on,
-                                     tags: tags,
-                                   }
-                                 ),
-                               )
 
-          if @load_balancer == "application"
+          @load_balancer.attach(@instance_set)
+
+          if @load_balancer.type == "application"
             @security_group = @load_balancer.security_group
-          else
-            @security_group = @instance_set.security_group
           end
 
           vpc.zone.add_alias_in(self, name, @load_balancer.alias_config)
-
-        elsif options[:instances].is_a?(Array)
-
-          @instance_set = add! StaticSet.create_in(
-                                 vpc, name, options.merge(
-                                   {
-                                     instance_profile: instance_profile,
-                                     depends_on: depends_on,
-                                     tags: tags,
-                                   }),
-                               )
-
-          @security_group = @instance_set.security_group
-
+        elsif set == StaticSet
           vpc.zone.add_record_in(self, name, @instance_set.instances.map { |i| i.ip_address })
           @instance_set.instances.each { |i|
             vpc.zone.add_record_in(self, i.name, [i.ip_address])
           }
-
-        else
-
-          raise "Don't know what kind of service this is"
-
         end
 
         self
