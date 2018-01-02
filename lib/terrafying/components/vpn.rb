@@ -287,6 +287,10 @@ EOF
         }
       end
 
+      def with_endpoint_service(*args)
+        @service.with_endpoint_service(*args)
+      end
+
       def security_group
         @service.security_group
       end
