@@ -45,6 +45,7 @@ module Terrafying
           public: true,
           subnets: vpc.subnets.fetch(:public, []),
           route_all_traffic: false,
+          units: [],
           tags: {}
         }.merge(options)
 
@@ -90,7 +91,7 @@ module Terrafying
                             public: options[:public],
                             ports: [22, 443, { number: 1194, type: "udp" }],
                             tags: options[:tags],
-                            units: units,
+                            units: units + options[:units],
                             files: files,
                             keypairs: keypairs,
                             subnets: options[:subnets],
