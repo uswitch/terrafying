@@ -54,7 +54,7 @@ module Terrafying
         @cidr = options[:cidr]
         @fqdn = vpc.zone.qualify(name)
 
-        has_oauth2_provider = options.has_key? :oauth2_provider
+        has_oauth2_provider = options.has_key? :oauth2_provider && options[:oauth2_provider] != nil
 
         units = [
           openvpn_service,
