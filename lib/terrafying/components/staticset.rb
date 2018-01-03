@@ -86,7 +86,7 @@ module Terrafying
                                    tags: {
                                      staticset_name: ident,
                                    }.merge(options[:tags])
-                                 }.merge(config.has_key?(:ip_address) ? { ip_address: config[:ip_address] } : {})
+                                 }.merge(config)
                                )
                              )
 
