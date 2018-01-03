@@ -17,8 +17,13 @@ module Terrafying
         @elb_client = ::Aws::ElasticLoadBalancingV2::Client.new
         @route53_client = ::Aws::Route53::Client.new
         @s3_client = ::Aws::S3::Client.new
+        @sts_client = ::Aws::STS::Client.new
 
         @region = region
+      end
+
+      def account_id
+        @account_id_cache ||= @sts_client.get_caller_identity.account
       end
 
       def security_group(name)

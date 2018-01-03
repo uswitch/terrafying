@@ -28,7 +28,9 @@ module Terrafying
       def create_for(load_balancer, name, options={})
         options = {
           acceptance_required: true,
-          allowed_principals: [],
+          allowed_principals: [
+            "arn:aws:iam::#{aws.account_id}:root",
+          ],
         }.merge(options)
 
         if ! load_balancer or load_balancer.type != "network"
