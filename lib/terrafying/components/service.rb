@@ -117,6 +117,7 @@ module Terrafying
         elsif set == StaticSet
           vpc.zone.add_record_in(self, name, @instance_set.instances.map { |i| i.ip_address })
           @instance_set.instances.each { |i|
+            @domain_names << vpc.zone.qualify(i.name)
             vpc.zone.add_record_in(self, i.name, [i.ip_address])
           }
         end
