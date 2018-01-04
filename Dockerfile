@@ -15,10 +15,16 @@ RUN curl -L -o terraform.zip https://releases.hashicorp.com/terraform/0.11.1/ter
     unzip terraform.zip && rm terraform.zip && \
     mv terraform /usr/bin/terraform
 
+RUN mkdir -p /root/.terraform.d/plugins/linux_amd64
+
 RUN curl -L -o terraform-provider-acme.zip https://github.com/paybyphone/terraform-provider-acme/releases/download/v0.4.0/terraform-provider-acme_v0.4.0_linux_amd64.zip && \
     unzip terraform-provider-acme.zip && rm terraform-provider-acme.zip && \
-    mkdir -p /root/.terraform.d/plugins/linux_amd64 && \
-    mv terraform-provider-acme /root/.terraform.d/plugins/linux_amd64/terraform-provider-acme_0.4.0
+    mv terraform-provider-acme /root/.terraform.d/plugins/linux_amd64/terraform-provider-acme_v0.4.0 && \
+    chmod +x /root/.terraform.d/plugins/linux_amd64/terraform-provider-acme_v0.4.0
+
+RUN curl -L -o /root/.terraform.d/plugins/linux_amd64/terraform-provider-aws_v1.7.0 \
+    https://github.com/uswitch/terraform-provider-aws/releases/download/private-link/terraform-provider-aws && \
+    chmod +x /root/.terraform.d/plugins/linux_amd64/terraform-provider-aws_v1.7.0
 
 COPY . /usr/src/app
 WORKDIR /usr/src/app
