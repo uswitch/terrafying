@@ -24,7 +24,7 @@ module Terrafying
     end
 
     def aws
-      @aws ||= Terrafying::Aws::Ops.new "eu-west-1"
+      @@aws ||= Terrafying::Aws::Ops.new "eu-west-1"
     end
 
     def provider(name, spec)
