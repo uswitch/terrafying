@@ -28,3 +28,47 @@ pipeline:
     when:
       event: push
       branch: master
+
+  docker-alpine:
+    dockerfile: Dockerfile-alpine
+    image: plugins/docker
+    repo: quay.io/uswitch/terrafying
+    registry: quay.io
+    secrets: [ docker_username, docker_password ]
+    tags:
+      - "${DRONE_COMMIT_SHA}-alpine"
+      - "${DRONE_COMMIT_BRANCH}-alpine"
+    when:
+      event: push
+
+  test-alpine:
+    image:  quay.io/uswitch/terrafying:${DRONE_COMMIT_SHA}-alpine
+    commands:
+      - bundle exec rspec spec/
+    when:
+      event: push
+
+  docker-latest-alpine:
+    dockerfile: Dockerfile-alpine
+    image: plugins/docker
+    repo: quay.io/uswitch/terrafying
+    registry: quay.io
+    secrets: [ docker_username, docker_password ]
+    tags:
+      - ${DRONE_COMMIT_SHA}-alpine
+      - latest-alpine
+    when:
+      event: push
+      branch: master
+
+  docker-tag-alpine:
+    dockerfile: Dockerfile-alpine
+    image: plugins/docker
+    repo: quay.io/uswitch/terrafying
+    registry: quay.io
+    secrets: [ docker_username, docker_password ]
+    tags:
+      - ${DRONE_TAG}-alpine
+    when:
+      event: tag
+      branch: master
