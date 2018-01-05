@@ -19,7 +19,6 @@ module Terrafying
 
     def initialize
       @output = {
-        "provider" => PROVIDER_DEFAULTS,
         "resource" => {}
       }
       @children = []
@@ -30,6 +29,7 @@ module Terrafying
     end
 
     def provider(name, spec)
+      @output["provider"] ||= {}
       @output["provider"][name] = spec
     end
 
@@ -103,7 +103,13 @@ module Terrafying
 
   end
 
-  class DSLContext < Context
+  class RootContext < Context
+
+    def initialize
+      super
+
+      output["provider"] = PROVIDER_DEFAULTS
+    end
 
     def generate(&block)
       instance_eval(&block)
@@ -115,6 +121,6 @@ module Terrafying
 
   end
 
-  Generator = DSLContext.new
+  Generator = RootContext.new
 
 end

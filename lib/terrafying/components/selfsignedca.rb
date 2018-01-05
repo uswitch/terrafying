@@ -33,6 +33,8 @@ module Terrafying
 
         @ident = "#{name}-ca"
 
+        provider :tls, {}
+
         resource :tls_private_key, @ident, {
                    algorithm: "ECDSA",
                    ecdsa_curve: "P384",
