@@ -27,6 +27,7 @@ module Terrafying
           auto_accept: true,
           subnets: vpc.subnets.fetch(:private, []),
           private_dns: false,
+          dns_name: name,
           tags: {},
         }.merge(options)
 
@@ -83,7 +84,7 @@ module Terrafying
                    private_dns_enabled: options[:private_dns],
                  }
 
-        vpc.zone.add_cname_in(self, name, output_of(:aws_vpc_endpoint, ident, "dns_entry.0.dns_name"))
+        vpc.zone.add_cname_in(self, options[:dns_name], output_of(:aws_vpc_endpoint, ident, "dns_entry.0.dns_name"))
 
         self
       end
