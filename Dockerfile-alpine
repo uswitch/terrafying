@@ -1,8 +1,9 @@
 FROM ruby:2.4-alpine3.7
 
 RUN apk --update add --no-cache --virtual .azure-builddeps build-base python2-dev \
- && apk add --no-cache --virtual .azure-rundeps python2 py-setuptools py-pip bash \
- && pip install --no-cache-dir azure-cli \
+ && apk add --no-cache --virtual .azure-rundeps python2 py-setuptools py2-pip bash \
+ && pip install --no-cache-dir azure-cli-profile azure-cli-role \
+ && pip install --no-cache-dir --no-deps azure-cli \
  && apk del .azure-builddeps \
  && rm -rf /var/cache/apk/*
 
