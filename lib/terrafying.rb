@@ -25,7 +25,7 @@ module Terrafying
       @options = options
       @scope = options[:scope] || scope_for_path(@path)
 
-      puts "Scope: #{@scope}"
+      $stderr.puts "Scope: #{@scope}"
 
       load(path)
     end
