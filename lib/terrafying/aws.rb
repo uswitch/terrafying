@@ -5,14 +5,25 @@ Aws.use_bundled_cert!
 module Terrafying
   module Aws
     class Ops
-      def initialize
+
+      attr_reader :region
+
+      def initialize(region)
         ::Aws.config.update({
-          region: 'eu-west-1'
+          region: region
         })
         @ec2_resource = ::Aws::EC2::Resource.new
         @ec2_client = ::Aws::EC2::Client.new
+        @elb_client = ::Aws::ElasticLoadBalancingV2::Client.new
         @route53_client = ::Aws::Route53::Client.new
         @s3_client = ::Aws::S3::Client.new
+        @sts_client = ::Aws::STS::Client.new
+
+        @region = region
+      end
+
+      def account_id
+        @account_id_cache ||= @sts_client.get_caller_identity.account
       end
 
       def security_group(name)
@@ -36,6 +47,35 @@ module Terrafying
               raise "No security group with name '#{name}' was found."
             when groups.count > 1
               raise "More than one security group with name '#{name}' found: " + groups.join(', ')
+            end
+          end
+      end
+
+      def security_group_by_tags(tags)
+        @security_groups_by_tags ||= {}
+        @security_groups_by_tags[tags] ||=
+          begin
+            groups = @ec2_client.describe_security_groups(
+              {
+                filters: [
+                  {
+                    name: "tag-key",
+                    values: tags.keys,
+                  },
+                  {
+                    name: "tag-value",
+                    values: tags.values
+                  }
+                ]
+              },
+            ).security_groups
+            case
+            when groups.count == 1
+              groups.first.id
+            when groups.count < 1
+              raise "No security group with tags '#{tags}' was found."
+            when groups.count > 1
+              raise "More than one security group with tags '#{tags}' found: " + groups.join(', ')
             end
           end
       end
@@ -346,10 +386,85 @@ module Terrafying
             resp.contents
           end
       end
-    end
 
-    def aws
-      @@ops ||= Ops.new
+      def endpoint_service_by_name(service_name)
+        @endpoint_service ||= {}
+        @endpoint_service[service_name] ||=
+          begin
+            resp = @ec2_client.describe_vpc_endpoint_service_configurations(
+              {
+                filters: [
+                  {
+                    name: "service-name",
+                    values: [service_name],
+                  },
+                ],
+              }
+            )
+
+            endpoint_services = resp.service_configurations
+            case
+            when endpoint_services.count == 1
+              endpoint_services.first
+            when endpoint_services.count < 1
+              raise "No endpoint service with name '#{service_name}' was found."
+            when endpoint_services.count > 1
+              raise "More than one endpoint service with name '#{service_name}' was found: " + endpoint_services.join(', ')
+            end
+          end
+      end
+
+      def endpoint_service_by_lb_arn(arn)
+        @endpoint_services_by_lb_arn ||= {}
+        @endpoint_services_by_lb_arn[arn] ||=
+          begin
+            resp = @ec2_client.describe_vpc_endpoint_service_configurations
+
+            services = resp.service_configurations.select { |service|
+              service.network_load_balancer_arns.include?(arn)
+            }
+
+            case
+            when services.count == 1
+              services.first
+            when services.count < 1
+              raise "No endpoint service with lb arn '#{arn}' was found."
+            when services.count > 1
+              raise "More than one endpoint service with lb arn '#{arn}' was found: " + services.join(', ')
+            end
+          end
+      end
+
+      def lb_by_name(name)
+        @lbs ||= {}
+        @lbs[name] ||=
+          begin
+            load_balancers = @elb_client.describe_load_balancers({ names: [name] }).load_balancers
+
+            case
+            when load_balancers.count == 1
+              load_balancers.first
+            when load_balancers.count < 1
+              raise "No load balancer with name '#{name}' was found."
+            when load_balancers.count > 1
+              raise "More than one load balancer with name '#{name}' was found: " + load_balancers.join(', ')
+            end
+          end
+      end
+
+      def target_groups_by_lb(arn)
+        @target_groups ||= {}
+        @target_groups[arn] ||=
+          begin
+            resp = @elb_client.describe_target_groups(
+              {
+                load_balancer_arn: arn,
+              }
+            )
+
+            resp.target_groups
+          end
+      end
     end
 
   end

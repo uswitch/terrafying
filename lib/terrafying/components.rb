@@ -1,4 +1,6 @@
 
+require 'terrafying/components/endpoint'
+require 'terrafying/components/endpointservice'
 require 'terrafying/components/selfsignedca'
 require 'terrafying/components/letsencrypt'
 require 'terrafying/components/service'

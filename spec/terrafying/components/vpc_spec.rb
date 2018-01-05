@@ -120,7 +120,7 @@ RSpec.describe Terrafying::Components::VPC do
 
       num_new_routes = vpc_a.output_with_children["resource"]["aws_route"].count - original_route_count
 
-      expect(num_new_routes).to eq(vpc_a.subnets.count * vpc_a.azs.count + vpc_b.subnets.count * vpc_b.azs.count)
+      expect(num_new_routes).to eq(2 * vpc_a.subnets.count * vpc_a.azs.count * vpc_b.subnets.count * vpc_b.azs.count)
     end
 
     it "should allow users to limit the subnets that are peered" do
@@ -132,11 +132,15 @@ RSpec.describe Terrafying::Components::VPC do
       our_subnets = vpc_a.subnets[:public]
       their_subnets = vpc_b.subnets[:public]
 
-      vpc_a.peer_with(vpc_b, { our_subnets: our_subnets, their_subnets: their_subnets })
+      vpc_a.peer_with(vpc_b, { peering: [
+                                 { from: our_subnets, to: their_subnets },
+                                 { from: their_subnets, to: our_subnets },
+                               ],
+                             })
 
       num_new_routes = vpc_a.output_with_children["resource"]["aws_route"].count - original_route_count
 
-      expect(num_new_routes).to eq(our_subnets.count + their_subnets.count)
+      expect(num_new_routes).to eq(2 * our_subnets.count * vpc_a.azs.count * their_subnets.count * vpc_b.azs.count)
     end
 
   end

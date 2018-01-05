@@ -81,6 +81,7 @@ EOF
           files: [],
           units: [],
           ssh_group: "cloud",
+          region: Terrafying::Generator.aws.region,
         }.merge(options)
 
         options[:cas] = options[:keypairs].map { |kp| kp[:ca] }.sort.uniq

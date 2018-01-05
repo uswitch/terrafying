@@ -9,7 +9,7 @@ module Terrafying
 
     class DynamicSet < Terrafying::Context
 
-      attr_reader :name, :security_group
+      attr_reader :name, :security_group, :asgs
 
       include Usable
 
@@ -34,7 +34,7 @@ module Terrafying
       def create_in(vpc, name, options={})
         options = {
           public: false,
-          ami: aws.ami("CoreOS-stable-1576.4.0-hvm", owners=["595879546273"]),
+          ami: aws.ami("base-image-b251e585", owners=["136393635417"]),
           instance_type: "t2.micro",
           instances: { min: 1, max: 1, desired: 1 },
           ports: [],
@@ -88,10 +88,8 @@ module Terrafying
                                    depends_on: options[:instance_profile] ? options[:instance_profile].resource_names : [],
                                  }
 
-        target_groups = options[:load_balancer] ? {target_group_arns: options[:load_balancer].target_groups} : {}
-
         if options[:pivot]
-          options[:subnets].map.with_index { |subnet, i|
+          @asgs = options[:subnets].map.with_index { |subnet, i|
             resource :aws_autoscaling_group, "#{ident}-#{i}", {
                        name: "#{ident}-#{i}",
                        launch_configuration: launch_config,
@@ -106,24 +104,25 @@ module Terrafying
                          { key: k, value: v, propagate_at_launch: true }
                        },
                        depends_on: options[:depends_on],
-                     }.merge(target_groups)
+                     }
           }
         else
-          resource :aws_autoscaling_group, ident, {
-                     name: ident,
-                     launch_configuration: launch_config,
-                     min_size: options[:instances][:min],
-                     max_size: options[:instances][:max],
-                     desired_capacity: options[:instances][:desired],
-                     vpc_zone_identifier: options[:subnets].map(&:id),
-                     tags: {
-                       Name: ident,
-                       service_name: name,
-                     }.merge(options[:tags]).map { |k,v|
-                       { key: k, value: v, propagate_at_launch: true }
-                     },
-                     depends_on: options[:depends_on],
-                   }.merge(target_groups)
+          asg = resource :aws_autoscaling_group, ident, {
+                           name: ident,
+                           launch_configuration: launch_config,
+                           min_size: options[:instances][:min],
+                           max_size: options[:instances][:max],
+                           desired_capacity: options[:instances][:desired],
+                           vpc_zone_identifier: options[:subnets].map(&:id),
+                           tags: {
+                             Name: ident,
+                             service_name: name,
+                           }.merge(options[:tags]).map { |k,v|
+                             { key: k, value: v, propagate_at_launch: true }
+                           },
+                           depends_on: options[:depends_on],
+                         }
+          @asgs = [asg]
         end
 
         self

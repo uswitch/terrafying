@@ -59,17 +59,41 @@ systemd:
         Requires=network-online.target
 
         [Service]
-        ExecStartPre=-/bin/mkdir -p /opt/bin
-        ExecStartPre=-/usr/bin/curl --retry 999 --retry-delay 2 -Lo /opt/bin/usersync https://github.com/uswitch/aws_usersync/releases/download/v1.0.0/aws_usersync
-        ExecStartPre=-/bin/chmod 0775 /opt/bin/usersync
         ExecStart=/opt/bin/usersync -I="root,core,fleet,systemd-coredump" -o=false -i=5 -g="<%= ssh_group %>"
+
+        Restart=always
+        RestartSec=30
+
+    - name: "download-certs.service"
+      enabled: true
+      contents: |
+        [Install]
+        WantedBy=multi-user.target
+
+        [Unit]
+        Description=Download certs required by services
+        Before=docker.service
+        After=network-online.target
+        Requires=network-online.target
+
+        [Service]
+        ExecStart=/opt/bin/s3-downloader --region "<%= region %>" <% cas.each { |ca| %>\
+        <%= ca.source %>:/etc/ssl/<%= ca.name %>/ca.cert:0444 <% } %><% keypairs.each { |keypair| %>\
+        <%= keypair[:source][:cert] %>:/etc/ssl/<%= keypair[:ca].name %>/<%= keypair[:name] %>/cert:0444 \
+        <%= keypair[:source][:key] %>:/etc/ssl/<%= keypair[:ca].name %>/<%= keypair[:name] %>/key:0444 <% } %>
+
         Restart=always
         RestartSec=30
 
     <% units.each { |unit| %>
     - name: "<%= unit[:name] %>"
-      enabled: true
-      contents: "<%= unit[:contents].dump[1..-2] %>"
+      enabled: true<% if unit.has_key?(:contents) %>
+      contents: "<%= unit[:contents].dump[1..-2] %>"<% end %><% if unit.has_key?(:dropins) %>
+      dropins:
+        <% unit[:dropins].each { |dropin| %>
+        - contents: "<%= dropin[:contents].dump[1..-2] %>"
+          name: "<%= dropin[:name] %>"
+        <% } %><% end %>
     <% } %>
 
 
@@ -84,31 +108,6 @@ storage:
     <% } %>
   <% end %>
   files:
-    <% cas.each { |ca| %>
-    - filesystem: "root"
-      path: "/etc/ssl/<%= ca.name %>/ca.cert"
-      mode: 0444
-      user: { id: 0 }
-      group: { id: 0 }
-      contents:
-        source: <%= ca.source %>
-    <% } %>
-    <% keypairs.each { |keypair| %>
-    - filesystem: "root"
-      path: "/etc/ssl/<%= keypair[:ca].name %>/<%= keypair[:name] %>/cert"
-      mode: 0444
-      user: { id: 0 }
-      group: { id: 0 }
-      contents:
-        source: <%= keypair[:source][:cert] %>
-    - filesystem: "root"
-      path: "/etc/ssl/<%= keypair[:ca].name %>/<%= keypair[:name] %>/key"
-      mode: 0444
-      user: { id: 0 }
-      group: { id: 0 }
-      contents:
-        source: <%= keypair[:source][:key] %>
-    <% } %>
     <% files.each { |file| %>
     - filesystem: "root"
       path: <%= file[:path] %>

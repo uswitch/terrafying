@@ -1,5 +1,6 @@
 
 require 'terrafying/components/usable'
+require 'terrafying/generator'
 
 require_relative './ports'
 
@@ -9,7 +10,7 @@ module Terrafying
 
     class LoadBalancer < Terrafying::Context
 
-      attr_reader :id, :type, :security_group, :target_groups, :alias_config
+      attr_reader :id, :type, :security_group, :ports, :target_groups, :alias_config
 
       include Usable
 
@@ -26,7 +27,35 @@ module Terrafying
       end
 
       def find_in(vpc, name)
-        raise 'unimplemented'
+        ident = "network-#{vpc.name}-#{name}"
+        @type = "network"
+
+        begin
+          lb = aws.lb_by_name(ident)
+        rescue
+          ident = "application-#{vpc.name}-#{name}"
+          @type = "application"
+
+          lb = aws.lb_by_name(ident)
+
+          @security_group = aws.security_group_by_tags({ loadbalancer_name: ident })
+        end
+
+        @id = lb.load_balancer_arn
+        @name = ident
+
+        target_groups = aws.target_groups_by_lb(@id)
+
+        @target_groups = target_groups.map(&:target_group_arn)
+        @ports = enrich_ports(target_groups.map(&:port).sort.uniq)
+
+        @alias_config = {
+          name: lb.dns_name,
+          zone_id: lb.canonical_hosted_zone_id,
+          evaluate_target_health: true,
+        }
+
+        self
       end
 
       def create_in(vpc, name, options={})
@@ -48,12 +77,17 @@ module Terrafying
         @type = l4_ports.count == 0 ? "application" : "network"
 
         ident = "#{type}-#{vpc.name}-#{name}"
+        @name = ident
 
         if @type == "application"
           @security_group = resource :aws_security_group, ident, {
                                        name: "loadbalancer-#{ident}",
                                        description: "Describe the ingress and egress of the load balancer #{ident}",
-                                       tags: options[:tags],
+                                       tags: options[:tags].merge(
+                                         {
+                                           loadbalancer_name: ident,
+                                         }
+                                       ),
                                        vpc_id: vpc.id,
                                      }
         end
@@ -69,7 +103,7 @@ module Terrafying
         @target_groups = []
 
         @ports.each { |port|
-          port_ident = "#{ident}-#{port[:type]}-#{port[:number]}"
+          port_ident = "#{ident}-#{port[:number]}"
 
           target_group = resource :aws_lb_target_group, port_ident, {
                                     name: port_ident,
@@ -106,6 +140,26 @@ module Terrafying
         }
 
         self
+      end
+
+      def attach(set)
+        if set.is_a? DynamicSet
+          set.asgs.product(@target_groups).each.with_index { |(asg, target_group), i|
+            resource :aws_autoscaling_attachment, "#{@name}-#{set.name}-#{i}", {
+                       autoscaling_group_name: asg,
+                       alb_target_group_arn: target_group
+                     }
+          }
+        elsif set.is_a? StaticSet
+          set.instances.product(@target_groups).each.with_index { |(instance, target_group), i|
+            resource :aws_lb_target_group_attachment, "#{@name}-#{set.name}-#{i}", {
+                       target_group_arn: target_group,
+                       target_id: instance.id,
+                     }
+          }
+        else
+          raise "Dont' know how to attach instances to LB"
+        end
       end
 
     end

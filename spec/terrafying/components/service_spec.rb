@@ -87,4 +87,43 @@ RSpec.describe Terrafying::Components::Service do
     }.to raise_error RuntimeError
   end
 
+  context "private link" do
+
+    it "shouldn't work if there isn't a load balancer" do
+      service = Terrafying::Components::Service.create_in(@vpc, "foo")
+
+      expect {
+        service.with_endpoint_service
+      }.to raise_error(RuntimeError)
+    end
+
+    it "shouldn't work if it's an ALB" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          ports: [{ number: 443, type: "https" }],
+        }
+      )
+
+      expect {
+        service.with_endpoint_service
+      }.to raise_error(RuntimeError)
+    end
+
+    it "should generate a service resource" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [443],
+        }
+      )
+
+      service.with_endpoint_service
+
+      output = service.output_with_children
+
+      expect(output["resource"]["aws_vpc_endpoint_service"].count).to eq(1)
+    end
+
+  end
+
 end

@@ -38,7 +38,7 @@ module Terrafying
       def create_in(vpc, name, options={})
         options = {
           public: false,
-          ami: aws.ami("CoreOS-stable-1576.4.0-hvm", owners=["595879546273"]),
+          ami: aws.ami("base-image-b251e585", owners=["136393635417"]),
           instance_type: "t2.micro",
           subnets: vpc.subnets.fetch(:private, []),
           ports: [],
@@ -86,7 +86,7 @@ module Terrafying
                                    tags: {
                                      staticset_name: ident,
                                    }.merge(options[:tags])
-                                 }.merge(config.has_key?(:ip_address) ? { ip_address: config[:ip_address] } : {})
+                                 }.merge(config)
                                )
                              )
 

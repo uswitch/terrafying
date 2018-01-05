@@ -44,6 +44,8 @@ module Terrafying
           cidr: "10.8.0.0/24",
           public: true,
           subnets: vpc.subnets.fetch(:public, []),
+          route_all_traffic: false,
+          units: [],
           tags: {}
         }.merge(options)
 
@@ -52,10 +54,18 @@ module Terrafying
         @cidr = options[:cidr]
         @fqdn = vpc.zone.qualify(name)
 
-        has_oauth2_provider = options.has_key? :oauth2_provider
+        has_oauth2_provider = options.has_key? :oauth2_provider && options[:oauth2_provider] != nil
 
-        units = [openvpn_service, openvpn_authz_service, caddy_service(options[:ca])]
-        files = [openvpn_conf, openvpn_env, caddy_conf(options[:ca], has_oauth2_provider)]
+        units = [
+          openvpn_service,
+          openvpn_authz_service(options[:route_all_traffic]),
+          caddy_service(options[:ca])
+        ]
+        files = [
+          openvpn_conf,
+          openvpn_env,
+          caddy_conf(options[:ca], has_oauth2_provider)
+        ]
         keypairs = []
 
         if has_oauth2_provider
@@ -78,13 +88,24 @@ module Terrafying
         @service = add! Service.create_in(
                           vpc, name,
                           {
-                            public: true,
+                            public: options[:public],
                             ports: [22, 443, { number: 1194, type: "udp" }],
                             tags: options[:tags],
-                            units: units,
+                            units: units + options[:units],
                             files: files,
                             keypairs: keypairs,
                             subnets: options[:subnets],
+                            iam_policy_statements: [
+                              {
+                                Effect: "Allow",
+                                Action: [
+                                  "ec2:DescribeRouteTables",
+                                ],
+                                Resource: [
+                                  "*"
+                                ]
+                              }
+                            ],
                           }
                         )
 
@@ -113,10 +134,6 @@ module Terrafying
         self
       end
 
-      def used_by_cidr(*cidrs)
-        @service.used_by_cidr(*cidrs)
-      end
-
       def openvpn_service
         Ignition.container_unit(
           "openvpn", "kylemanna/openvpn",
@@ -132,7 +149,13 @@ module Terrafying
         )
       end
 
-      def openvpn_authz_service
+      def openvpn_authz_service(route_all_traffic)
+        optional_arguments = []
+
+        if route_all_traffic
+          optional_arguments << "--route-all"
+        end
+
         Ignition.container_unit(
           "openvpn-authz", "quay.io/uswitch/openvpn-authz:latest",
           {
@@ -141,7 +164,10 @@ module Terrafying
               "/etc/ssl/openvpn:/etc/ssl/openvpn",
               "/var/openvpn-authz:/var/openvpn-authz",
             ],
-            arguments: [
+            environment_variables: [
+              "AWS_REGION=#{aws.region}",
+            ],
+            arguments: optional_arguments + [
               "--fqdn #{@fqdn}",
               "--cache /var/openvpn-authz",
               "/etc/ssl/openvpn",
@@ -247,8 +273,6 @@ status /tmp/openvpn-status.log
 
 user nobody
 group nogroup
-
-push "route #{cidr_to_split_address(@vpc.cidr)}"
 EOF
         }
       end
@@ -261,6 +285,22 @@ EOF
 declare -x OVPN_SERVER=#{@cidr}
 EOF
         }
+      end
+
+      def with_endpoint_service(*args)
+        @service.with_endpoint_service(*args)
+      end
+
+      def security_group
+        @service.security_group
+      end
+
+      def used_by(*services)
+        @service.used_by(*services)
+      end
+
+      def used_by_cidr(*cidrs)
+        @service.used_by_cidr(*cidrs)
       end
 
     end

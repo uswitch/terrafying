@@ -104,6 +104,24 @@ RSpec.describe Terrafying::Components::Ignition, '#generate' do
            end).to be true
   end
 
+  it "adds in drops not just contents into units" do
+    user_data = Terrafying::Components::Ignition.generate(
+      {
+        units: [{ name: "docker.service", dropins: [{contents: "LOL", name: "10-lol.conf"}] }],
+      }
+    )
+
+    units = JSON.parse(user_data, { symbolize_names: true })[:systemd][:units]
+
+    expect(units.any? do |unit|
+             unit == {
+               name: 'docker.service',
+               enabled: true,
+               dropins: [{contents: "LOL", name: "10-lol.conf"}],
+             }
+           end).to be true
+  end
+
   it "adds in files" do
     user_data = Terrafying::Components::Ignition.generate(
       {
@@ -149,8 +167,11 @@ RSpec.describe Terrafying::Components::Ignition, '#generate' do
       }
     )
 
-    files = JSON.parse(user_data, { symbolize_names: true })[:storage][:files]
-    paths = files.map { |f| f[:path] }
+    units = JSON.parse(user_data, { symbolize_names: true })[:systemd][:units]
+
+    certs_unit = units.select { |u| u[:name] == "download-certs.service" }.first
+
+    paths = certs_unit[:contents].scan(/\/etc\/ssl\/[^\/]+\/[a-z\.]+[\/\.][a-z\.]+/)
 
     expect(paths).to include("/etc/ssl/great-ca/ca.cert", "/etc/ssl/great-ca/foo/key", "/etc/ssl/great-ca/foo/cert")
   end

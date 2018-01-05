@@ -3,6 +3,7 @@ require 'digest'
 require 'terrafying/generator'
 require 'terrafying/util'
 require 'terrafying/components/dynamicset'
+require 'terrafying/components/endpointservice'
 require 'terrafying/components/ignition'
 require 'terrafying/components/instance'
 require 'terrafying/components/instanceprofile'
@@ -38,7 +39,7 @@ module Terrafying
 
       def create_in(vpc, name, options={})
         options = {
-          ami: aws.ami("CoreOS-stable-1576.4.0-hvm", owners=["595879546273"]),
+          ami: aws.ami("base-image-b251e585", owners=["136393635417"]),
           instance_type: "t2.micro",
           ports: [],
           instances: [{}],
@@ -60,6 +61,14 @@ module Terrafying
           options[:user_data] = Ignition.generate(options)
         end
 
+        if ! options.has_key?(:loadbalancer_subnets)
+          options[:loadbalancer_subnets] = options[:subnets]
+        end
+
+        unless options[:instances].is_a?(Hash) or options[:instances].is_a?(Array)
+          raise 'Unknown instances option, should be hash or array'
+        end
+
         ident = "#{vpc.name}-#{name}"
 
         @name = ident
@@ -71,49 +80,53 @@ module Terrafying
         iam_statements = options[:iam_policy_statements] + options[:keypairs].map { |kp| kp[:iam_statement] }
         instance_profile = add! InstanceProfile.create(ident, { statements: iam_statements })
 
-        if options[:instances].is_a?(Hash)
+        tags = options[:tags].merge({ service_name: name })
 
-          @load_balancer = add! LoadBalancer.create_in(vpc, name, options)
-          @instance_set = add! DynamicSet.create_in(
-                                 vpc, name, options.merge({
+        set = options[:instances].is_a?(Hash) ? DynamicSet : StaticSet
+
+        @instance_set = add! set.create_in(
+                               vpc, name, options.merge(
+                                 {
                                    instance_profile: instance_profile,
-                                   load_balancer: @load_balancer,
                                    depends_on: depends_on,
-                                 }),
-                               )
+                                   tags: tags,
+                                 }
+                               ),
+                             )
+        @security_group = @instance_set.security_group
 
-          if @load_balancer == "application"
+        wants_load_balancer = options[:instances].is_a?(Hash) || options[:loadbalancer]
+
+        if wants_load_balancer
+          @load_balancer = add! LoadBalancer.create_in(
+                                  vpc, name, options.merge(
+                                    {
+                                      subnets: options[:loadbalancer_subnets],
+                                      tags: tags,
+                                    }
+                                  ),
+                                )
+
+          @load_balancer.attach(@instance_set)
+
+          if @load_balancer.type == "application"
             @security_group = @load_balancer.security_group
-          else
-            @security_group = @instance_set.security_group
           end
 
           vpc.zone.add_alias_in(self, name, @load_balancer.alias_config)
-
-        elsif options[:instances].is_a?(Array)
-
-          @instance_set = add! StaticSet.create_in(
-                                 vpc, name, options.merge(
-                                   {
-                                     instance_profile: instance_profile,
-                                     depends_on: depends_on,
-                                   }),
-                               )
-
-          @security_group = @instance_set.security_group
-
+        elsif set == StaticSet
           vpc.zone.add_record_in(self, name, @instance_set.instances.map { |i| i.ip_address })
           @instance_set.instances.each { |i|
+            @domain_names << vpc.zone.qualify(i.name)
             vpc.zone.add_record_in(self, i.name, [i.ip_address])
           }
-
-        else
-
-          raise "Don't know what kind of service this is"
-
         end
 
         self
+      end
+
+      def with_endpoint_service(options = {})
+        add! EndpointService.create_for(@load_balancer, @name, options)
       end
 
     end
