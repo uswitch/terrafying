@@ -52,7 +52,7 @@ module Terrafying
           volumes: [],
         }.merge(options)
 
-        ident = "#{vpc.name}-#{name}"
+        ident = "#{tf_safe(vpc.name)}-#{name}"
 
         @name = ident
         @ports = enrich_ports(options[:ports])
