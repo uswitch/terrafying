@@ -111,6 +111,14 @@ module Terrafying
       output["provider"] = PROVIDER_DEFAULTS
     end
 
+    def backend(name, spec)
+      @output["terraform"] = {
+        backend: {
+          name => spec,
+        },
+      }
+    end
+
     def generate(&block)
       instance_eval(&block)
     end
