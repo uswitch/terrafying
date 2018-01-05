@@ -47,7 +47,7 @@ module Terrafying
           tags: {},
         }.merge(options)
 
-        ident = fqdn.gsub(/\./, "-")
+        ident = tf_safe(fqdn)
 
         @fqdn = fqdn
         @id = resource :aws_route53_zone, ident, {
@@ -76,7 +76,7 @@ module Terrafying
 
       def add_record_in(ctx, name,records)
         fqdn = qualify(name)
-        ctx.resource :aws_route53_record, fqdn.gsub(/\./, "-"), {
+        ctx.resource :aws_route53_record, tf_safe(fqdn), {
                    zone_id: @id,
                    name: fqdn,
                    type: "A",
@@ -91,7 +91,7 @@ module Terrafying
 
       def add_alias_in(ctx, name, config)
         fqdn = qualify(name)
-        ctx.resource :aws_route53_record, fqdn.gsub(/\./, "-"), {
+        ctx.resource :aws_route53_record, tf_safe(fqdn), {
                    zone_id: @id,
                    name: fqdn,
                    type: "A",
@@ -101,7 +101,7 @@ module Terrafying
 
       def add_srv(name, service_name, port, type, hosts)
         fqdn = qualify(name)
-        ident = fqdn.gsub(/\./, "-")
+        ident = tf_safe(fqdn)
 
         resource :aws_route53_record, "srv-#{ident}-#{service_name}", {
                    zone_id: @id,

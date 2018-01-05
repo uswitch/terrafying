@@ -68,7 +68,7 @@ module Terrafying
           @ssh_group = DEFAULT_SSH_GROUP
         end
 
-        @internal_ssh_security_group = aws.security_group("#{name.gsub(/[\s\.]/,"-")}-internal-ssh")
+        @internal_ssh_security_group = aws.security_group("#{tf_safe(name)}-internal-ssh")
         self
       end
 
@@ -205,7 +205,7 @@ module Terrafying
           ],
         }.merge(options)
 
-        other_vpc_ident = other_vpc.name.gsub(/[\s\.]/, "-")
+        other_vpc_ident = tf_safe(other_vpc.name)
 
         our_cidr = NetAddr::CIDR.create(@cidr)
         other_cidr = NetAddr::CIDR.create(other_vpc.cidr)
@@ -226,7 +226,7 @@ module Terrafying
 
           route_tables.product(cidrs).each { |route_table, cidr|
 
-            hash = Digest::SHA2.hexdigest "#{route_table}-#{cidr.gsub(/[\.\/]/, "-")}"
+            hash = Digest::SHA2.hexdigest "#{route_table}-#{tf_safe(cidr)}"
 
             resource :aws_route, "#{@name}-#{other_vpc_ident}-peer-#{hash}", {
                        route_table_id: route_table,

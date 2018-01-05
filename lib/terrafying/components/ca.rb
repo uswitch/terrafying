@@ -10,7 +10,7 @@ module Terrafying
       end
 
       def reference_keypair(ctx, name)
-        key_ident = "#{@name}-#{name.gsub(/\./, '-')}"
+        key_ident = "#{@name}-#{tf_safe(name)}"
 
         ref = {
           name: name,

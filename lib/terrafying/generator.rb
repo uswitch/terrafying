@@ -95,6 +95,10 @@ module Terrafying
       c[0]
     end
 
+    def tf_safe(str)
+      str.gsub(/[\.\s\/\?]/, "-")
+    end
+
   end
 
   class DSLContext < Context

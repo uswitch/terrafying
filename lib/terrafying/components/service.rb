@@ -69,7 +69,7 @@ module Terrafying
           raise 'Unknown instances option, should be hash or array'
         end
 
-        ident = "#{vpc.name}-#{name}"
+        ident = "#{tf_safe(vpc.name)}-#{name}"
 
         @name = ident
         @ports = enrich_ports(options[:ports])

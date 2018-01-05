@@ -27,13 +27,13 @@ module Terrafying
       end
 
       def find_in(vpc, name)
-        ident = "network-#{vpc.name}-#{name}"
+        ident = "network-#{tf_safe(vpc.name)}-#{name}"
         @type = "network"
 
         begin
           lb = aws.lb_by_name(ident)
         rescue
-          ident = "application-#{vpc.name}-#{name}"
+          ident = "application-#{tf_safe(vpc.name)}-#{name}"
           @type = "application"
 
           lb = aws.lb_by_name(ident)
@@ -76,7 +76,7 @@ module Terrafying
 
         @type = l4_ports.count == 0 ? "application" : "network"
 
-        ident = "#{type}-#{vpc.name}-#{name}"
+        ident = "#{type}-#{tf_safe(vpc.name)}-#{name}"
         @name = ident
 
         if @type == "application"

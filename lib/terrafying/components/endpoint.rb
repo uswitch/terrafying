@@ -30,7 +30,7 @@ module Terrafying
           tags: {},
         }.merge(options)
 
-        ident = "#{vpc.name}-#{name}"
+        ident = "#{tf_safe(vpc.name)}-#{name}"
         @name = name
 
         if options[:service]

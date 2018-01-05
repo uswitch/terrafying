@@ -76,7 +76,7 @@ module Terrafying
           ip_addresses: [],
         }.merge(options)
 
-        key_ident = "#{@name}-#{name.gsub(/\./, '-')}"
+        key_ident = "#{@name}-#{tf_safe(name)}"
 
         ctx.resource :tls_private_key, key_ident, {
                        algorithm: "ECDSA",

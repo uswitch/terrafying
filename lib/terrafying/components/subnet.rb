@@ -50,20 +50,20 @@ module Terrafying
           tags: {},
         }.merge(options)
 
-        name = "#{vpc.name}-#{name}-#{az}"
+        ident = "#{tf_safe(vpc.name)}-#{name}-#{az}"
 
         @cidr = cidr
         @az = az
-        @id = resource :aws_subnet, name, {
+        @id = resource :aws_subnet, ident, {
                          vpc_id: vpc.id,
                          cidr_block: cidr,
                          availability_zone: az,
-                         tags: { Name: name }.merge(options[:tags]),
+                         tags: { Name: ident }.merge(options[:tags]),
                        }
 
-        @route_table = resource :aws_route_table, name, {
+        @route_table = resource :aws_route_table, ident, {
                                   vpc_id: vpc.id,
-                                  tags: { Name: name }.merge(options[:tags]),
+                                  tags: { Name: ident }.merge(options[:tags]),
                                 }
 
 
@@ -80,13 +80,13 @@ module Terrafying
         end
 
         if gateway
-          resource :aws_route, "#{name}-default", {
+          resource :aws_route, "#{ident}-default", {
                      route_table_id: @route_table,
                      destination_cidr_block: "0.0.0.0/0",
                    }.merge(gateway)
         end
 
-        resource :aws_route_table_association, name, {
+        resource :aws_route_table_association, ident, {
                    subnet_id: @id,
                    route_table_id: @route_table,
                  }

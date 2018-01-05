@@ -38,7 +38,7 @@ module Terrafying
           depends_on: [],
         }.merge(options)
 
-        ident = "#{vpc.name}-#{name}"
+        ident = "#{tf_safe(vpc.name)}-#{name}"
 
         @name = name
         @ports = enrich_ports(options[:ports])
