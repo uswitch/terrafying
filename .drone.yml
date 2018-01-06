@@ -30,7 +30,6 @@ pipeline:
       branch: master
 
   tag:
-    dockerfile: Dockerfile-alpine
     image: plugins/docker
     repo: quay.io/uswitch/terrafying
     registry: quay.io
