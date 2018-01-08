@@ -28,3 +28,14 @@ pipeline:
     when:
       event: push
       branch: master
+
+  tag:
+    image: plugins/docker
+    repo: quay.io/uswitch/terrafying
+    registry: quay.io
+    secrets: [ docker_username, docker_password ]
+    tags:
+      - ${DRONE_TAG}
+    when:
+      event: tag
+      branch: master
