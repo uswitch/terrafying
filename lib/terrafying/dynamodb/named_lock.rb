@@ -1,4 +1,5 @@
 require 'terrafying/dynamodb'
+require 'terrafying/dynamodb/config'
 
 module Terrafying
   module DynamoDb
