@@ -18,7 +18,7 @@ module Terrafying
     end
 
     def self.dynamodb(scope)
-      Terrafying::DynamoDb::NamedLock.new("terrafying-state-lock", scope)
+      Terrafying::DynamoDb::NamedLock.new(Terrafying::DynamoDb.config.lock_table, scope)
     end
 
   end

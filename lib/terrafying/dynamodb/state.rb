@@ -1,4 +1,5 @@
 require 'digest'
+require 'terrafying/dynamodb/config'
 
 module Terrafying
   module DynamoDb
@@ -6,7 +7,7 @@ module Terrafying
       def initialize(scope, opts = {})
         @scope = scope
         @client = Terrafying::DynamoDb.client
-        @table_name = "terrafying-state"
+        @table_name = Terrafying::DynamoDb.config.state_table
       end
       
       def get
