@@ -199,6 +199,7 @@ module Terrafying
 
       def peer_with(other_vpc, options={})
         options = {
+          complete: false,
           peerings: [
             { from: @subnets.values.flatten, to: other_vpc.subnets.values.flatten },
             { from: other_vpc.subnets.values.flatten, to: @subnets.values.flatten },
@@ -220,21 +221,36 @@ module Terrafying
                                         tags: { Name: "#{@name} to #{other_vpc.name}" }.merge(@tags),
                                       }
 
-        options[:peerings].each.with_index { |peering, i|
-          route_tables = peering[:from].map(&:route_table).sort.uniq
-          cidrs = peering[:to].map(&:cidr).sort.uniq
+        if options[:complete]
+          our_route_tables = @subnets.values.flatten.map(&:route_table).sort.uniq
+          their_route_tables = other_vpc.subnets.values.flatten.map(&:route_table).sort.uniq
 
-          route_tables.product(cidrs).each { |route_table, cidr|
-
+          (our_route_tables.product([other_vpc.cidr]) + their_route_tables.product([@cidr])).each { |route_table, cidr|
             hash = Digest::SHA2.hexdigest "#{route_table}-#{tf_safe(cidr)}"
 
             resource :aws_route, "#{@name}-#{other_vpc_ident}-peer-#{hash}", {
-                       route_table_id: route_table,
-                       destination_cidr_block: cidr,
-                       vpc_peering_connection_id: peering_connection,
-                     }
+              route_table_id: route_table,
+              destination_cidr_block: cidr,
+              vpc_peering_connection_id: peering_connection,
+            }
           }
-        }
+        else
+          options[:peerings].each.with_index { |peering, i|
+            route_tables = peering[:from].map(&:route_table).sort.uniq
+            cidrs = peering[:to].map(&:cidr).sort.uniq
+
+            route_tables.product(cidrs).each { |route_table, cidr|
+
+              hash = Digest::SHA2.hexdigest "#{route_table}-#{tf_safe(cidr)}"
+
+              resource :aws_route, "#{@name}-#{other_vpc_ident}-peer-#{hash}", {
+                route_table_id: route_table,
+                destination_cidr_block: cidr,
+                vpc_peering_connection_id: peering_connection,
+              }
+            }
+          }
+        end
       end
 
       def extract_subnet!(bit_size)
