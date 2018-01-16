@@ -54,6 +54,7 @@ module Terrafying
           ssh_group: vpc.ssh_group,
           subnets: vpc.subnets.fetch(:private, []),
           pivot: false,
+          startup_grace_period: 300,
           depends_on: [],
         }.merge(options)
 
@@ -84,18 +85,20 @@ module Terrafying
 
         set = options[:instances].is_a?(Hash) ? DynamicSet : StaticSet
 
-        @instance_set = add! set.create_in(
-                               vpc, name, options.merge(
-                                 {
-                                   instance_profile: instance_profile,
-                                   depends_on: depends_on,
-                                   tags: tags,
-                                 }
-                               ),
-                             )
-        @security_group = @instance_set.security_group
-
         wants_load_balancer = options[:instances].is_a?(Hash) || options[:loadbalancer]
+
+        instance_set_options = {
+          instance_profile: instance_profile,
+          depends_on: depends_on,
+          tags: tags,
+        }
+
+        if wants_load_balancer && @ports.any? { |p| p.has_key?(:health_check) }
+          instance_set_options[:health_check] = { type: "ELB", grace_period: options[:startup_grace_period] }
+        end
+
+        @instance_set = add! set.create_in(vpc, name, options.merge(instance_set_options))
+        @security_group = @instance_set.security_group
 
         if wants_load_balancer
           @load_balancer = add! LoadBalancer.create_in(
