@@ -143,6 +143,23 @@ RSpec.describe Terrafying::Components::VPC do
       expect(num_new_routes).to eq(2 * our_subnets.count * vpc_a.azs.count * their_subnets.count * vpc_b.azs.count)
     end
 
+    it "should allow us to completely peer vpcs" do
+      vpc_a = Terrafying::Components::VPC.create("a", "10.0.0.0/16")
+      vpc_b = Terrafying::Components::VPC.create("b", "10.1.0.0/16")
+
+      original_route_count = vpc_a.output_with_children["resource"]["aws_route"].count
+
+      vpc_a.peer_with(vpc_b, complete: true)
+
+      num_new_routes = vpc_a.output_with_children["resource"]["aws_route"].count - original_route_count
+
+      vpc_a_route_tables = vpc_a.subnets.values.flatten.map(&:route_table).sort.uniq
+      vpc_b_route_tables = vpc_b.subnets.values.flatten.map(&:route_table).sort.uniq
+
+      expect(num_new_routes).to eq(vpc_a_route_tables.count + vpc_b_route_tables.count)
+
+    end
+
   end
 
   context "extract_subnet!" do
