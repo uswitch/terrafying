@@ -54,7 +54,7 @@ module Terrafying
         @cidr = options[:cidr]
         @fqdn = vpc.zone.qualify(name)
 
-        has_oauth2_provider = options.has_key? :oauth2_provider && options[:oauth2_provider] != nil
+        has_oauth2_provider = options.has_key?(:oauth2_provider) && options[:oauth2_provider] != nil
 
         units = [
           openvpn_service,
@@ -69,7 +69,7 @@ module Terrafying
         keypairs = []
 
         if has_oauth2_provider
-          if ! options[:oauth2_provider].is_a? Hash || [:type, :client_id, :client_secret].all? {|k| options[:oauth2_provider].has_key? k }
+          if ! options[:oauth2_provider].is_a?(Hash) || [:type, :client_id, :client_secret].any? {|k| !options[:oauth2_provider].has_key? k }
             raise "You need to provide 'client_id', 'client_secret', and 'type' when you are passing a provider"
           end
 
