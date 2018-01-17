@@ -88,7 +88,18 @@ module Terrafying
                                    depends_on: options[:instance_profile] ? options[:instance_profile].resource_names : [],
                                  }
 
-        asg_configuration = {}
+        asg_configuration = {
+          enabled_metrics: [
+            "GroupMinSize",
+            "GroupMaxSize",
+            "GroupDesiredCapacity",
+            "GroupInServiceInstances",
+            "GroupPendingInstances",
+            "GroupStandbyInstances",
+            "GroupTerminatingInstances",
+            "GroupTotalInstances",
+          ],
+        }
 
         if options.has_key?(:health_check)
           raise 'Health check needs a type and grace_period' if ! options[:health_check].has_key?(:type) and ! options[:health_check].has_key?(:grace_period)
