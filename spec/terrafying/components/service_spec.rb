@@ -65,6 +65,36 @@ RSpec.describe Terrafying::Components::Service do
     expect(output["resource"]["aws_autoscaling_group"].count).to eq(1)
   end
 
+  context "asg health check" do
+    it "it should default to EC2 checks" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [443],
+        }
+      )
+
+      output = service.output_with_children
+
+      expect(output["resource"]["aws_autoscaling_group"].count).to eq(1)
+      expect(output["resource"]["aws_autoscaling_group"].values.first[:health_check_type]).to be nil
+    end
+
+    it "should set an elb health check on dynamic set if it has a load balancer and some health checks" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [{ number: 443, health_check: { path: "/foo", protocol: "HTTPS" }}],
+        }
+      )
+
+      output = service.output_with_children
+
+      expect(output["resource"]["aws_autoscaling_group"].count).to eq(1)
+      expect(output["resource"]["aws_autoscaling_group"].values.first[:health_check_type]).to eq("ELB")
+    end
+  end
+
   it "should create a static set when instances is an array" do
     service = Terrafying::Components::Service.create_in(
       @vpc, "foo", {
