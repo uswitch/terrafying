@@ -7,6 +7,9 @@ module Terrafying
 
     class Ignition
 
+      UNIT_REQUIRED_KEYS = [:name]
+      FILE_REQUIRED_KEYS = [:path, :mode, :contents]
+
       def self.container_unit(name, image, options={})
         options = {
           volumes: [],
@@ -83,6 +86,18 @@ EOF
           ssh_group: "cloud",
           region: Terrafying::Generator.aws.region,
         }.merge(options)
+
+        if ! options[:units].all? { |u| UNIT_REQUIRED_KEYS.all? { |key| u.has_key?(key) } }
+          raise "All units require the following keys: #{UNIT_REQUIRED_KEYS}"
+        end
+
+        if ! options[:units].all? { |u| u.has_key?(:contents) || u.has_key?(:dropins) }
+          raise "All units have to have contents and/or dropins"
+        end
+
+        if ! options[:files].all? { |f| FILE_REQUIRED_KEYS.all? { |key| f.has_key?(key) } }
+          raise "All files require the following keys: #{FILE_REQUIRED_KEYS}"
+        end
 
         options[:cas] = options[:keypairs].map { |kp| kp[:ca] }.sort.uniq
 

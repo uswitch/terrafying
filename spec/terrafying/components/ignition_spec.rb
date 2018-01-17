@@ -175,4 +175,79 @@ RSpec.describe Terrafying::Components::Ignition, '#generate' do
 
     expect(paths).to include("/etc/ssl/great-ca/ca.cert", "/etc/ssl/great-ca/foo/key", "/etc/ssl/great-ca/foo/cert")
   end
+
+  context "validation" do
+
+    it "should ensure every file has a path" do
+      expect {
+        Terrafying::Components::Ignition.generate(
+          {
+            files: [ { } ],
+          }
+        )
+      }.to raise_error(RuntimeError)
+    end
+
+    it "should pass a valid file" do
+      expect {
+        Terrafying::Components::Ignition.generate(
+          {
+            files: [ { path: "/", mode: "0644", contents: "" } ],
+          }
+        )
+      }.to_not raise_error
+    end
+
+    it "should ensure every unit has a name" do
+      expect {
+        Terrafying::Components::Ignition.generate(
+          {
+            units: [ { } ],
+          }
+        )
+      }.to raise_error(RuntimeError)
+    end
+
+    it "should ensure every unit has contents and/or dropins" do
+      expect {
+        Terrafying::Components::Ignition.generate(
+          {
+            units: [ { name: "foo" } ],
+          }
+        )
+      }.to raise_error(RuntimeError)
+      expect {
+        Terrafying::Components::Ignition.generate(
+          {
+            units: [ { name: "foo", contents: "bar" } ],
+          }
+        )
+      }.to_not raise_error
+      expect {
+        Terrafying::Components::Ignition.generate(
+          {
+            units: [ { name: "foo", dropins: [] } ],
+          }
+        )
+      }.to_not raise_error
+      expect {
+        Terrafying::Components::Ignition.generate(
+          {
+            units: [ { name: "foo", contents: "bar", dropins: [] } ],
+          }
+        )
+      }.to_not raise_error
+    end
+
+    it "should pass a valid unit" do
+      expect {
+        Terrafying::Components::Ignition.generate(
+          {
+            units: [ { name: "foo.service", contents: "blarf" } ],
+          }
+        )
+      }.to_not raise_error
+    end
+
+  end
 end
