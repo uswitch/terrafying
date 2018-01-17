@@ -38,7 +38,7 @@ module Terrafying
         super
       end
 
-      def create_in(vpc, name, options={})
+      def create_in(vpc, name, provider, options={})
         options = {
           group: "uSwitch Developers",
           cidr: "10.8.0.0/24",
@@ -54,7 +54,15 @@ module Terrafying
         @cidr = options[:cidr]
         @fqdn = vpc.zone.qualify(name)
 
-        has_oauth2_provider = options.has_key?(:oauth2_provider) && options[:oauth2_provider] != nil
+        if ! provider.is_a?(Hash)
+          raise "You need to give a provider hash containing a type, client_id and client_secret"
+        end
+
+        has_provider = provider[:type] != "none"
+
+        if has_provider and ! [:type, :client_id, :client_secret].all? {|k| provider.has_key?(k) }
+          raise "You need to set type, client_id and client_secret"
+        end
 
         units = [
           openvpn_service,
@@ -64,21 +72,15 @@ module Terrafying
         files = [
           openvpn_conf,
           openvpn_env,
-          caddy_conf(options[:ca], has_oauth2_provider)
+          caddy_conf(options[:ca], has_provider)
         ]
         keypairs = []
 
-        if has_oauth2_provider
-          if ! options[:oauth2_provider].is_a?(Hash) || [:type, :client_id, :client_secret].any? {|k| !options[:oauth2_provider].has_key? k }
-            raise "You need to provide 'client_id', 'client_secret', and 'type' when you are passing a provider"
-          end
-
-          @oauth2_provider = options[:oauth2_provider]
-
-          vpn_hash = Digest::SHA2.digest(vpc.name + name + @oauth2_provider[:client_secret] + @oauth2_provider[:client_id])
+        if has_provider
+          vpn_hash = Digest::SHA2.digest(vpc.name + name + provider[:client_secret] + provider[:client_id])
           cookie_secret = Base64.strict_encode64(vpn_hash.byteslice(0,16))
 
-          units.push(oauth2_proxy_service(@oauth2_provider, cookie_secret))
+          units.push(oauth2_proxy_service(provider, cookie_secret))
         end
 
         if options.has_key?(:ca)
@@ -109,7 +111,7 @@ module Terrafying
                           }
                         )
 
-        if has_oauth2_provider and @oauth2_provider[:type] == "azure" and @oauth2_provider[:register]
+        if provider[:type] == "azure" and provider[:register]
           resource :null_resource, "ad-app-configure", {
                      triggers: {
                        service_resources: @service.resources.join(","),
@@ -118,13 +120,13 @@ module Terrafying
                        {
                          "local-exec" => {
                            when: "create",
-                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{@oauth2_provider[:client_id]}' '#{@oauth2_provider[:tenant_id]}' '#{@fqdn}'"
+                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{provider[:client_id]}' '#{provider[:tenant_id]}' '#{@fqdn}'"
                          },
                        },
                        {
                          "local-exec" => {
                            when: "destroy",
-                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{@oauth2_provider[:client_id]}' '#{@oauth2_provider[:tenant_id]}' '#{@fqdn}'"
+                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{provider[:client_id]}' '#{provider[:tenant_id]}' '#{@fqdn}'"
                          }
                        },
                      ],
@@ -176,11 +178,11 @@ module Terrafying
         )
       end
 
-      def oauth2_proxy_service(oauth2_provider, cookie_secret)
+      def oauth2_proxy_service(provider, cookie_secret)
         optional_arguments = []
 
-        if oauth2_provider.has_key?(:permit_groups)
-          optional_arguments << "-permit-groups '#{oauth2_provider[:permit_groups].join(",")}'"
+        if provider.has_key?(:permit_groups)
+          optional_arguments << "-permit-groups '#{provider[:permit_groups].join(",")}'"
         end
 
         Ignition.container_unit(
@@ -188,11 +190,11 @@ module Terrafying
           {
             host_networking: true,
             arguments: [
-              "-client-id='#{oauth2_provider[:client_id]}'",
-              "-client-secret='#{oauth2_provider[:client_secret]}'",
+              "-client-id='#{provider[:client_id]}'",
+              "-client-secret='#{provider[:client_secret]}'",
               "-email-domain='*'",
               "-cookie-secret='#{cookie_secret}'",
-              "-provider=#{oauth2_provider[:type]}",
+              "-provider=#{provider[:type]}",
               "-http-address='0.0.0.0:4180'",
               "-redirect-url='https://#{@fqdn}/oauth2/callback'",
               "-upstream='http://localhost:8080'",
