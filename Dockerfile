@@ -19,7 +19,7 @@ RUN wget -O terraform-provider-aws https://github.com/uswitch/terraform-provider
 
 RUN wget -O terraform-provider-acme.zip https://github.com/paybyphone/terraform-provider-acme/releases/download/v0.4.0/terraform-provider-acme_v0.4.0_linux_amd64.zip \
  && unzip terraform-provider-acme.zip \
- && install -m 755 terraform-provider-acme /root/.terraform.d/plugins/linux_amd64/terraform-provider-acme_0.4.0 \
+ && install -m 755 terraform-provider-acme /root/.terraform.d/plugins/linux_amd64/terraform-provider-acme_v0.4.0 \
  && rm terraform-provider-acme terraform-provider-acme.zip
 
 COPY . /usr/src/app
