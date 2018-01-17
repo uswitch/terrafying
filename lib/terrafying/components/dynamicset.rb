@@ -88,6 +88,15 @@ module Terrafying
                                    depends_on: options[:instance_profile] ? options[:instance_profile].resource_names : [],
                                  }
 
+        asg_configuration = {}
+
+        if options.has_key?(:health_check)
+          raise 'Health check needs a type and grace_period' if ! options[:health_check].has_key?(:type) and ! options[:health_check].has_key?(:grace_period)
+
+          asg_configuration[:health_check_type] = options[:health_check][:type]
+          asg_configuration[:health_check_grace_period] = options[:health_check][:grace_period]
+        end
+
         if options[:pivot]
           @asgs = options[:subnets].map.with_index { |subnet, i|
             resource :aws_autoscaling_group, "#{ident}-#{i}", {
@@ -104,7 +113,7 @@ module Terrafying
                          { key: k, value: v, propagate_at_launch: true }
                        },
                        depends_on: options[:depends_on],
-                     }
+                     }.merge(asg_configuration)
           }
         else
           asg = resource :aws_autoscaling_group, ident, {
@@ -121,7 +130,8 @@ module Terrafying
                              { key: k, value: v, propagate_at_launch: true }
                            },
                            depends_on: options[:depends_on],
-                         }
+                         }.merge(asg_configuration)
+
           @asgs = [asg]
         end
 
