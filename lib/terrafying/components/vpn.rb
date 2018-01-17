@@ -30,8 +30,8 @@ module Terrafying
 
       attr_reader :name, :cidr
 
-      def self.create_in(vpc, name, options={})
-        VPN.new.create_in vpc, name, options
+      def self.create_in(vpc, name, provider, options={})
+        VPN.new.create_in vpc, name, provider, options
       end
 
       def initialize()
