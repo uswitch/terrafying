@@ -104,10 +104,12 @@ module Terrafying
 
         if options[:pivot]
           @asgs = options[:subnets].map.with_index { |subnet, i|
-            resource :aws_cloudformation_stack, "#{ident}-#{i}", {
+            resource :aws_cloudformation_stack, "#{ident}-#{i}",{
               name: "#{ident}-#{i}",
+              disable_rollback: true,
               template_body: generate_template(options[:health_check], options[:instances], launch_config, [subnet.id], tags, options[:rolling_update])
             }
+            output_of(:aws_cloudformation_stack, "#{ident}-#{i}", 'outputs["AsgName"]')
           }
         else
           asg = resource :aws_cloudformation_stack, ident, {
@@ -115,10 +117,19 @@ module Terrafying
                   disable_rollback: true,
                   template_body: generate_template(options[:health_check], options[:instances], launch_config, options[:subnets].map(&:id), tags, options[:rolling_update])
           }
-          @asgs = [asg]
+          @asgs = [output_of(:aws_cloudformation_stack, ident, 'outputs["AsgName"]')]
         end
 
         self
+      end
+
+      def attach_load_balancer(load_balancer)
+        @asgs.product(load_balancer.target_groups).each.with_index { |(asg, target_group), i|
+          resource :aws_autoscaling_attachment, "#{load_balancer.name}-#{@name}-#{i}", {
+                     autoscaling_group_name: asg,
+                     alb_target_group_arn: target_group
+                   }
+        }
       end
 
       def generate_template(health_check, instances, launch_config, subnets,tags, rolling_update)
@@ -156,7 +167,15 @@ module Terrafying
                 VPCZoneIdentifier: subnets
               }
             }
-          }
+          },
+          Outputs: {
+            AsgName: {
+              Description: "The name of the auto scaling group",
+              Value: {
+                Ref: "AutoScalingGroup",
+              },
+            },
+          },
         }
 
         if rolling_update
@@ -168,6 +187,7 @@ module Terrafying
             }
           }
         end
+
         JSON.pretty_generate(template)
       end
     end
