@@ -106,6 +106,7 @@ module Terrafying
           @asgs = options[:subnets].map.with_index { |subnet, i|
             resource :aws_cloudformation_stack, "#{ident}-#{i}", {
               name: "#{ident}-#{i}",
+              disable_rollback: true,
               template_body: generate_template(options[:health_check], options[:instances], launch_config, [subnet.id], tags, options[:rolling_update])
             }
           }
