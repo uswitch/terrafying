@@ -7,7 +7,7 @@ RUN apk --update add --no-cache --virtual .azure-builddeps build-base python2-de
  && apk del .azure-builddeps \
  && rm -rf /var/cache/apk/*
 
-RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/0.11.1/terraform_0.11.1_linux_amd64.zip \
+RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/0.11.2/terraform_0.11.2_linux_amd64.zip \
  && unzip terraform.zip \
  && install -m 755 terraform /usr/bin/terraform \
  && install -d ${HOME}/.terraform.d/plugins/linux_amd64 \
