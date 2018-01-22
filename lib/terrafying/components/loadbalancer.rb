@@ -10,7 +10,7 @@ module Terrafying
 
     class LoadBalancer < Terrafying::Context
 
-      attr_reader :id, :type, :security_group, :ports, :target_groups, :alias_config
+      attr_reader :id, :name, :type, :security_group, :ports, :target_groups, :alias_config
 
       include Usable
 
@@ -143,22 +143,10 @@ module Terrafying
       end
 
       def attach(set)
-        if set.is_a? DynamicSet
-          set.asgs.product(@target_groups).each.with_index { |(asg, target_group), i|
-            resource :aws_autoscaling_attachment, "#{@name}-#{set.name}-#{i}", {
-                       autoscaling_group_name: asg,
-                       alb_target_group_arn: target_group
-                     }
-          }
-        elsif set.is_a? StaticSet
-          set.instances.product(@target_groups).each.with_index { |(instance, target_group), i|
-            resource :aws_lb_target_group_attachment, "#{@name}-#{set.name}-#{i}", {
-                       target_group_arn: target_group,
-                       target_id: instance.id,
-                     }
-          }
+        if set.respond_to?(:attach_load_balancer)
+          set.attach_load_balancer(self)
         else
-          raise "Dont' know how to attach instances to LB"
+          raise "Dont' know how to attach object to LB"
         end
       end
 
