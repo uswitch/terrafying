@@ -23,7 +23,7 @@ module Terrafying
   module DynamoDb
     def self.client
       @@client ||= ::Aws::DynamoDB::Client.new({
-        region: 'eu-west-1',
+        region: Terrafying::Context::REGION,
         #endpoint: 'http://localhost:8000',
       })
     end
