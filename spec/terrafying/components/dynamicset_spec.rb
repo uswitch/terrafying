@@ -40,13 +40,13 @@ RSpec.describe Terrafying::Components::DynamicSet do
     dynamic_set = Terrafying::Components::DynamicSet.create_in(@vpc, "foo", { rolling_update: false })
     output = dynamic_set.output_with_children
     template_body = JSON.parse(output["resource"]["aws_cloudformation_stack"].values.first[:template_body])
-    expect(template_body["Resources"]["AutoScalingGroup"]["Properties"]["UpdatePolicy"]).to be_nil
+    expect(template_body["Resources"]["AutoScalingGroup"]["UpdatePolicy"]).to be_nil
   end
 
   it "should set update policy by default" do
     dynamic_set = Terrafying::Components::DynamicSet.create_in(@vpc, "foo", )
     output = dynamic_set.output_with_children
     template_body = JSON.parse(output["resource"]["aws_cloudformation_stack"].values.first[:template_body])
-    expect(template_body["Resources"]["AutoScalingGroup"]["Properties"]["UpdatePolicy"]["AutoScalingRollingUpdate"]).not_to be_nil
+    expect(template_body["Resources"]["AutoScalingGroup"]["UpdatePolicy"]["AutoScalingRollingUpdate"]).not_to be_nil
   end
 end

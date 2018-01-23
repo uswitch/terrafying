@@ -179,7 +179,7 @@ module Terrafying
         }
 
         if rolling_update
-          template[:Resources][:AutoScalingGroup][:Properties][:UpdatePolicy] = {
+          template[:Resources][:AutoScalingGroup][:UpdatePolicy] = {
             AutoScalingRollingUpdate: {
               MinInstancesInService: "#{instances[:min]}",
               MaxBatchSize: "1",
