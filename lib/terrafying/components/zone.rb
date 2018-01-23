@@ -100,16 +100,20 @@ module Terrafying
       end
 
       def add_srv(name, service_name, port, type, hosts)
+        add_srv_in(self, name, service_name, port, type, hosts)
+      end
+
+      def add_srv_in(ctx, name, service_name, port, type, hosts)
         fqdn = qualify(name)
         ident = tf_safe(fqdn)
 
-        resource :aws_route53_record, "srv-#{ident}-#{service_name}", {
-                   zone_id: @id,
-                   name: "_#{service_name}._#{type}.#{fqdn}",
-                   type: "SRV",
-                   ttl: "60",
-                   records: hosts.map { |host| "0 0 #{port} #{qualify(host)}" }
-                 }
+        ctx.resource :aws_route53_record, "srv-#{ident}-#{service_name}", {
+                       zone_id: @id,
+                       name: "_#{service_name}._#{type}.#{fqdn}",
+                       type: "SRV",
+                       ttl: "60",
+                       records: hosts.map { |host| "0 0 #{port} #{host}" }
+                     }
       end
 
       def add_cname(name, *records)
