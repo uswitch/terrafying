@@ -32,6 +32,9 @@ module Terrafying
         @prefix = options[:prefix]
         @server_url = options[:server_url]
 
+        provider :acme, {}
+        provider :tls, {}
+
         resource :tls_private_key, "#{@name}-account", {
                    algorithm: "ECDSA",
                    ecdsa_curve: "P384",

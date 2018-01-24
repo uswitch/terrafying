@@ -38,7 +38,7 @@ module Terrafying
         super
       end
 
-      def create_in(vpc, name, provider, options={})
+      def create_in(vpc, name, oauth2_provider, options={})
         options = {
           group: "uSwitch Developers",
           cidr: "10.8.0.0/24",
@@ -54,13 +54,13 @@ module Terrafying
         @cidr = options[:cidr]
         @fqdn = vpc.zone.qualify(name)
 
-        if ! provider.is_a?(Hash)
+        if ! oauth2_provider.is_a?(Hash)
           raise "You need to give a provider hash containing a type, client_id and client_secret"
         end
 
-        has_provider = provider[:type] != "none"
+        has_provider = oauth2_provider[:type] != "none"
 
-        if has_provider and ! [:type, :client_id, :client_secret].all? {|k| provider.has_key?(k) }
+        if has_provider and ! [:type, :client_id, :client_secret].all? {|k| oauth2_provider.has_key?(k) }
           raise "You need to set type, client_id and client_secret"
         end
 
@@ -77,10 +77,10 @@ module Terrafying
         keypairs = []
 
         if has_provider
-          vpn_hash = Digest::SHA2.digest(vpc.name + name + provider[:client_secret] + provider[:client_id])
+          vpn_hash = Digest::SHA2.digest(vpc.name + name + oauth2_provider[:client_secret] + oauth2_provider[:client_id])
           cookie_secret = Base64.strict_encode64(vpn_hash.byteslice(0,16))
 
-          units.push(oauth2_proxy_service(provider, cookie_secret))
+          units.push(oauth2_proxy_service(oauth2_provider, cookie_secret))
         end
 
         if options.has_key?(:ca)
@@ -111,7 +111,10 @@ module Terrafying
                           }
                         )
 
-        if provider[:type] == "azure" and provider[:register]
+        if oauth2_provider[:type] == "azure" and oauth2_provider[:register]
+
+          provider :null, {}
+
           resource :null_resource, "ad-app-configure", {
                      triggers: {
                        service_resources: @service.resources.join(","),
@@ -120,13 +123,13 @@ module Terrafying
                        {
                          "local-exec" => {
                            when: "create",
-                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{provider[:client_id]}' '#{provider[:tenant_id]}' '#{@fqdn}'"
+                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/register-vpn '#{oauth2_provider[:client_id]}' '#{oauth2_provider[:tenant_id]}' '#{@fqdn}'"
                          },
                        },
                        {
                          "local-exec" => {
                            when: "destroy",
-                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{provider[:client_id]}' '#{provider[:tenant_id]}' '#{@fqdn}'"
+                           command: "#{File.expand_path(File.dirname(__FILE__))}/support/deregister-vpn '#{oauth2_provider[:client_id]}' '#{oauth2_provider[:tenant_id]}' '#{@fqdn}'"
                          }
                        },
                      ],
@@ -178,11 +181,11 @@ module Terrafying
         )
       end
 
-      def oauth2_proxy_service(provider, cookie_secret)
+      def oauth2_proxy_service(oauth2_provider, cookie_secret)
         optional_arguments = []
 
-        if provider.has_key?(:permit_groups)
-          optional_arguments << "-permit-groups '#{provider[:permit_groups].join(",")}'"
+        if oauth2_provider.has_key?(:permit_groups)
+          optional_arguments << "-permit-groups '#{oauth2_provider[:permit_groups].join(",")}'"
         end
 
         Ignition.container_unit(
@@ -190,11 +193,11 @@ module Terrafying
           {
             host_networking: true,
             arguments: [
-              "-client-id='#{provider[:client_id]}'",
-              "-client-secret='#{provider[:client_secret]}'",
+              "-client-id='#{oauth2_provider[:client_id]}'",
+              "-client-secret='#{oauth2_provider[:client_secret]}'",
               "-email-domain='*'",
               "-cookie-secret='#{cookie_secret}'",
-              "-provider=#{provider[:type]}",
+              "-provider=#{oauth2_provider[:type]}",
               "-http-address='0.0.0.0:4180'",
               "-redirect-url='https://#{@fqdn}/oauth2/callback'",
               "-upstream='http://localhost:8080'",
