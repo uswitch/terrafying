@@ -9,8 +9,10 @@ module Terrafying
 
   class Context
 
+    REGION = ENV.fetch("AWS_REGION", "eu-west-1")
+
     PROVIDER_DEFAULTS = {
-      aws: { region: 'eu-west-1' }
+      aws: { region: REGION }
     }
 
     attr_reader :output
@@ -24,7 +26,7 @@ module Terrafying
     end
 
     def aws
-      @@aws ||= Terrafying::Aws::Ops.new "eu-west-1"
+      @@aws ||= Terrafying::Aws::Ops.new REGION
     end
 
     def provider(name, spec)
