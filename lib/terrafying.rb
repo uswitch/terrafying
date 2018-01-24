@@ -181,6 +181,10 @@ module Terrafying
     end
 
     def with_state(opts, &block)
+      if !@options[:dynamodb]
+        return yield(block)
+      end
+      
       store = State.store(self)
 
       begin
