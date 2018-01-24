@@ -6,6 +6,7 @@ module Terrafying
     class_option :keep, :type => :boolean, :default => false
     class_option :target, :type => :string, :default => nil
     class_option :scope, :type => :string, :default => nil
+    class_option :dynamodb, :type => :boolean, :default => true
 
     desc "list PATH", "List resources defined"
     def list(path)
