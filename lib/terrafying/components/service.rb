@@ -85,7 +85,7 @@ module Terrafying
 
         set = options[:instances].is_a?(Hash) ? DynamicSet : StaticSet
 
-        wants_load_balancer = options[:instances].is_a?(Hash) || options[:loadbalancer]
+        wants_load_balancer = (set == DynamicSet && @ports.count > 0) || options[:loadbalancer]
 
         instance_set_options = {
           instance_profile: instance_profile,

@@ -62,7 +62,7 @@ RSpec.describe Terrafying::Components::Service do
 
     output = service.output_with_children
 
-    expect(output["resource"]["aws_autoscaling_group"].count).to eq(1)
+    expect(output["resource"]["aws_cloudformation_stack"].count).to eq(1)
   end
 
   context "asg health check" do
@@ -76,8 +76,9 @@ RSpec.describe Terrafying::Components::Service do
 
       output = service.output_with_children
 
-      expect(output["resource"]["aws_autoscaling_group"].count).to eq(1)
-      expect(output["resource"]["aws_autoscaling_group"].values.first[:health_check_type]).to be nil
+      expect(output["resource"]["aws_cloudformation_stack"].count).to eq(1)
+      template_body = JSON.parse(output["resource"]["aws_cloudformation_stack"].values.first[:template_body])
+      expect(template_body["Resources"]["AutoScalingGroup"]["Properties"]["HealthCheckType"]).to eq("EC2")
     end
 
     it "should set an elb health check on dynamic set if it has a load balancer and some health checks" do
@@ -90,8 +91,9 @@ RSpec.describe Terrafying::Components::Service do
 
       output = service.output_with_children
 
-      expect(output["resource"]["aws_autoscaling_group"].count).to eq(1)
-      expect(output["resource"]["aws_autoscaling_group"].values.first[:health_check_type]).to eq("ELB")
+      expect(output["resource"]["aws_cloudformation_stack"].count).to eq(1)
+      template_body = JSON.parse(output["resource"]["aws_cloudformation_stack"].values.first[:template_body])
+      expect(template_body["Resources"]["AutoScalingGroup"]["Properties"]["HealthCheckType"]).to eq("ELB")
     end
   end
 
