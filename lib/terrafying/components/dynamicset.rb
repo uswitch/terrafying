@@ -100,7 +100,7 @@ module Terrafying
             },
           }.merge(options)
         end
-        tags = { name: ident, service_name: name,}.merge(options[:tags]).map { |k,v| { Key: k, Value: v, PropagateAtLaunch: true }}
+        tags = { Name: ident, service_name: name,}.merge(options[:tags]).map { |k,v| { Key: k, Value: v, PropagateAtLaunch: true }}
 
         if options[:pivot]
           @asgs = options[:subnets].map.with_index { |subnet, i|
