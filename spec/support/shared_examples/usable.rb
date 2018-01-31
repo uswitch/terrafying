@@ -36,7 +36,7 @@ shared_examples "a usable resource" do
           rule[:cidr_blocks][0] == cidr && \
           rule[:from_port] == port[:number] && \
           rule[:to_port] == port[:number] && \
-          rule[:protocol] == port[:type]
+          rule[:protocol] == "tcp"
         }
       }
     ).to be true
@@ -63,7 +63,7 @@ shared_examples "a usable resource" do
           rule[:source_security_group_id] == resource.security_group && \
           rule[:from_port] == port[:number] && \
           rule[:to_port] == port[:number] && \
-          rule[:protocol] == port[:type]
+          rule[:protocol] == "tcp"
         }
       }
     ).to be true

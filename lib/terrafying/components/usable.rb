@@ -15,7 +15,7 @@ module Terrafying
                        type: "ingress",
                        from_port: port[:number],
                        to_port: port[:number],
-                       protocol: port[:type],
+                       protocol: port[:type] == "udp" ? "udp" : "tcp",
                        cidr_blocks: [cidr],
                      }
           }
@@ -30,7 +30,7 @@ module Terrafying
                        type: "ingress",
                        from_port: port[:number],
                        to_port: port[:number],
-                       protocol: port[:type],
+                       protocol: port[:type] == "udp" ? "udp" : "tcp",
                        source_security_group_id: other_resource.security_group,
                      }
           }
