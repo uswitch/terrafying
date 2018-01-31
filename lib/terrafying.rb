@@ -7,7 +7,6 @@ require 'tempfile'
 require 'hash/deep_merge'
 
 require 'terrafying/aws'
-require 'terrafying/components'
 require 'terrafying/cli'
 require 'terrafying/generator'
 require 'terrafying/lock'
@@ -184,7 +183,7 @@ module Terrafying
       if !@options[:dynamodb]
         return yield(block)
       end
-      
+
       store = State.store(self)
 
       begin
