@@ -14,10 +14,6 @@ Gem::Specification.new do |spec|
   spec.description   = %q{No.}
   spec.homepage      = "https://github.com/uswitch/terrafying"
 
-  # Prevent pushing this gem to RubyGems.org by setting 'allowed_push_host', or
-  # delete this section to allow pushing this gem to any host.
-  spec.metadata['allowed_push_host'] = "no"
-
   spec.bindir        = "bin"
   spec.executables   << "terrafying"
   spec.require_paths = ["lib"]
