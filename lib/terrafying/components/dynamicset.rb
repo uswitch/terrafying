@@ -9,7 +9,7 @@ module Terrafying
 
     class DynamicSet < Terrafying::Context
 
-      attr_reader :name, :security_group, :asgs
+      attr_reader :name, :asgs
 
       include Usable
 
@@ -130,6 +130,8 @@ module Terrafying
                      alb_target_group_arn: target_group
                    }
         }
+
+        self.used_by(load_balancer) if load_balancer.type == "application"
       end
 
       def generate_template(health_check, instances, launch_config, subnets,tags, rolling_update)

@@ -158,4 +158,93 @@ RSpec.describe Terrafying::Components::Service do
 
   end
 
+  context "load balancer" do
+
+    it "should create the security groups for ALB to talk to ASG" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [{ type: "https", number: 443 }],
+        }
+      )
+
+      output = service.output_with_children
+
+      instance_rules = output["resource"]["aws_security_group_rule"].values.select { |r| r[:security_group_id] == service.instance_set.security_group }
+      instance_to_lb_rules = instance_rules.select { |r| r[:source_security_group_id] == service.load_balancer.security_group }
+
+      expect(instance_to_lb_rules.count).to eq(service.ports.count)
+      expect(instance_to_lb_rules[0][:type]).to eq("ingress")
+      expect(instance_to_lb_rules[0][:protocol]).to eq("tcp")
+      expect(instance_to_lb_rules[0][:from_port]).to eq(443)
+      expect(instance_to_lb_rules[0][:to_port]).to eq(443)
+    end
+
+    it "should create the security groups for ALB to talk to instances" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          ports: [{ type: "https", number: 443 }],
+          loadbalancer: true,
+        }
+      )
+
+      output = service.output_with_children
+
+      instance_rules = output["resource"]["aws_security_group_rule"].values.select { |r| r[:security_group_id] == service.instance_set.security_group }
+      instance_to_lb_rules = instance_rules.select { |r| r[:source_security_group_id] == service.load_balancer.security_group }
+
+      expect(instance_to_lb_rules.count).to eq(service.ports.count)
+      expect(instance_to_lb_rules[0][:type]).to eq("ingress")
+      expect(instance_to_lb_rules[0][:protocol]).to eq("tcp")
+      expect(instance_to_lb_rules[0][:from_port]).to eq(443)
+      expect(instance_to_lb_rules[0][:to_port]).to eq(443)
+    end
+
+    it "should create no security groups for NLBs" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [443],
+        }
+      )
+
+      output = service.output_with_children
+
+      instance_rules = output["resource"].fetch("aws_security_group_rule", {}).values.select { |r|
+        r[:security_group_id] == service.instance_set.security_group
+      }
+      instance_to_lb_rules = instance_rules.select { |r| r[:source_security_group_id] == service.load_balancer.security_group }
+
+      expect(instance_to_lb_rules.count).to eq(0)
+    end
+
+    it "shouldn't use ALB as egress security group when binding services" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [{ type: "https", number: 443 }],
+        }
+      )
+
+      service_b = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [{ type: "https", number: 443 }],
+        }
+      )
+
+      service.used_by(service_b)
+
+      output = service.output_with_children
+
+      binding_rules = output["resource"].fetch("aws_security_group_rule", {}).values.select { |r|
+        r[:security_group_id] == service_b.load_balancer.ingress_security_group && \
+        r[:source_security_group_id] = service.instance_set.egress_security_group
+      }
+
+      expect(binding_rules.count).to eq(service.ports.count)
+    end
+
+  end
+
 end

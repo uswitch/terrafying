@@ -300,6 +300,14 @@ EOF
         @service.security_group
       end
 
+      def ingress_security_group
+        @service.ingress_security_group
+      end
+
+      def egress_security_group
+        @service.egress_security_group
+      end
+
       def used_by(*services)
         @service.used_by(*services)
       end

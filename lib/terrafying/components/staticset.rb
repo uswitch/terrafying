@@ -11,7 +11,7 @@ module Terrafying
 
     class StaticSet < Terrafying::Context
 
-      attr_reader :name, :instances, :security_group
+      attr_reader :name, :instances
 
       include Usable
 
@@ -133,6 +133,8 @@ module Terrafying
                      target_id: instance.id,
                    }
         }
+
+        self.used_by(load_balancer) if load_balancer.type == "application"
       end
 
     end
