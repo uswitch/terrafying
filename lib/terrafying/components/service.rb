@@ -17,7 +17,7 @@ module Terrafying
 
     class Service < Terrafying::Context
 
-      attr_reader :name, :domain_names, :security_group
+      attr_reader :name, :domain_names, :ports, :security_group, :load_balancer, :instance_set
 
       include Usable
 
@@ -124,7 +124,7 @@ module Terrafying
             vpc.zone.add_record_in(self, i.name, [i.ip_address])
           }
         end
-
+\
         self
       end
 
