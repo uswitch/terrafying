@@ -9,7 +9,7 @@ module Terrafying
 
     class DynamicSet < Terrafying::Context
 
-      attr_reader :name, :security_group, :asgs
+      attr_reader :name, :asgs
 
       include Usable
 

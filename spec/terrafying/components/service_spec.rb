@@ -218,6 +218,33 @@ RSpec.describe Terrafying::Components::Service do
       expect(instance_to_lb_rules.count).to eq(0)
     end
 
+    it "shouldn't use ALB as egress security group when binding services" do
+      service = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [{ type: "https", number: 443 }],
+        }
+      )
+
+      service_b = Terrafying::Components::Service.create_in(
+        @vpc, "foo", {
+          instances: { min: 1, max: 1, desired: 1 },
+          ports: [{ type: "https", number: 443 }],
+        }
+      )
+
+      service.used_by(service_b)
+
+      output = service.output_with_children
+
+      binding_rules = output["resource"].fetch("aws_security_group_rule", {}).values.select { |r|
+        r[:security_group_id] == service_b.load_balancer.ingress_security_group && \
+        r[:source_security_group_id] = service.instance_set.egress_security_group
+      }
+
+      expect(binding_rules.count).to eq(service.ports.count)
+    end
+
   end
 
 end

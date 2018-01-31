@@ -17,7 +17,7 @@ module Terrafying
 
     class Service < Terrafying::Context
 
-      attr_reader :name, :domain_names, :ports, :security_group, :load_balancer, :instance_set
+      attr_reader :name, :domain_names, :ports, :load_balancer, :instance_set
 
       include Usable
 
@@ -114,6 +114,7 @@ module Terrafying
 
           if @load_balancer.type == "application"
             @security_group = @load_balancer.security_group
+            @egress_security_group = @instance_set.security_group
           end
 
           vpc.zone.add_alias_in(self, name, @load_balancer.alias_config)

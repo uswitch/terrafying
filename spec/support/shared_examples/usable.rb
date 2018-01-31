@@ -2,7 +2,6 @@ shared_examples "a usable resource" do
 
   it { is_expected.to respond_to(:used_by) }
   it { is_expected.to respond_to(:used_by_cidr) }
-  it { is_expected.to respond_to(:security_group) }
 
   let :ports do
     [

@@ -7,7 +7,7 @@ module Terrafying
 
     class Instance < Terrafying::Context
 
-      attr_reader :id, :name, :ip_address, :subnet, :security_group
+      attr_reader :id, :name, :ip_address, :subnet
 
       include Usable
 

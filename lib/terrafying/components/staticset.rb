@@ -11,7 +11,7 @@ module Terrafying
 
     class StaticSet < Terrafying::Context
 
-      attr_reader :name, :instances, :security_group
+      attr_reader :name, :instances
 
       include Usable
 
