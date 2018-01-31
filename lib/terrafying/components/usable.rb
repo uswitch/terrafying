@@ -45,6 +45,15 @@ module Terrafying
                        protocol: port[:type] == "udp" ? "udp" : "tcp",
                        source_security_group_id: other_resource.egress_security_group,
                      }
+
+            resource :aws_security_group_rule, "#{other_resource.name}-to-#{@name}-#{port[:name]}", {
+                       security_group_id: other_resource.egress_security_group,
+                       type: "egress",
+                       from_port: port[:number],
+                       to_port: port[:number],
+                       protocol: port[:type] == "udp" ? "udp" : "tcp",
+                       source_security_group_id: self.ingress_security_group,
+                     }
           }
         }
       end
