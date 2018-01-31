@@ -170,14 +170,26 @@ RSpec.describe Terrafying::Components::Service do
 
       output = service.output_with_children
 
-      instance_rules = output["resource"]["aws_security_group_rule"].values.select { |r| r[:security_group_id] == service.instance_set.security_group }
-      instance_to_lb_rules = instance_rules.select { |r| r[:source_security_group_id] == service.load_balancer.security_group }
+      instance_to_lb_rules = output["resource"]["aws_security_group_rule"].values.select { |r|
+        r[:security_group_id] == service.instance_set.security_group && \
+        r[:source_security_group_id] == service.load_balancer.security_group
+      }
+      lb_to_instance_rules = output["resource"]["aws_security_group_rule"].values.select { |r|
+        r[:security_group_id] == service.load_balancer.security_group && \
+        r[:source_security_group_id] == service.instance_set.security_group
+      }
 
       expect(instance_to_lb_rules.count).to eq(service.ports.count)
       expect(instance_to_lb_rules[0][:type]).to eq("ingress")
       expect(instance_to_lb_rules[0][:protocol]).to eq("tcp")
       expect(instance_to_lb_rules[0][:from_port]).to eq(443)
       expect(instance_to_lb_rules[0][:to_port]).to eq(443)
+
+      expect(lb_to_instance_rules.count).to eq(service.ports.count)
+      expect(lb_to_instance_rules[0][:type]).to eq("egress")
+      expect(lb_to_instance_rules[0][:protocol]).to eq("tcp")
+      expect(lb_to_instance_rules[0][:from_port]).to eq(443)
+      expect(lb_to_instance_rules[0][:to_port]).to eq(443)
     end
 
     it "should create the security groups for ALB to talk to instances" do
