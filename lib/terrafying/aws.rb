@@ -12,6 +12,7 @@ module Terrafying
         ::Aws.config.update({
           region: region
         })
+        @autoscaling_client = ::Aws::AutoScaling::Client.new
         @ec2_resource = ::Aws::EC2::Resource.new
         @ec2_client = ::Aws::EC2::Client.new
         @elb_client = ::Aws::ElasticLoadBalancingV2::Client.new
@@ -464,6 +465,32 @@ module Terrafying
 
             resp.target_groups
           end
+      end
+
+      def asgs_by_tags(expectedTags = {})
+        asgs = []
+        next_token = nil
+
+        loop do
+          resp = @autoscaling_client.describe_auto_scaling_groups({ next_token: next_token })
+
+          asgs = asgs + resp.auto_scaling_groups.select { |asg|
+            matches = asg.tags.select { |tag|
+              expectedTags[tag.key.to_sym] == tag.value ||
+                expectedTags[tag.key] == tag.value
+            }
+
+            matches.count == expectedTags.count
+          }
+
+          if resp.next_token
+            next_token = resp.next_token
+          else
+            break
+          end
+        end
+
+        asgs
       end
     end
 
