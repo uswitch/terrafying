@@ -9,7 +9,7 @@ RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/0.11.2/terraf
 COPY . /usr/src/app
 
 RUN apk add --update --no-cache --virtual .terra-builddeps build-base ruby-dev \
- && apk add --update --no-cache --virtual .terra-rundeps git \
+ && apk add --update --no-cache --virtual .terra-rundeps git bash \
  && cd /usr/src/app \
  && bundle install \
  && install -d /terra \
