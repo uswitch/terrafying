@@ -9,8 +9,12 @@ module Terrafying
       attr_reader :region
 
       def initialize(region)
+        full_jitter = lambda { |c| Kernel.sleep(Kernel.rand(0..[2, (0.3 * 2**c.retries)].min)) }
+
         ::Aws.config.update({
-          region: region
+          region: region,
+          retry_limit: 5,
+          retry_backoff: full_jitter
         })
         @autoscaling_client = ::Aws::AutoScaling::Client.new
         @ec2_resource = ::Aws::EC2::Resource.new
@@ -353,15 +357,22 @@ module Terrafying
         @hosted_zones[tag] ||=
           begin
             STDERR.puts "looking for a hosted zone with tag '#{tag}'"
-            hosted_zones = @route53_client.list_hosted_zones().hosted_zones.select { |zone|
-              tags = @route53_client.list_tags_for_resource({resource_type: "hostedzone", resource_id: zone.id.split('/')[2]}).resource_tag_set.tags.select { |aws_tag|
-                tag.keys.any? { |key| String(key) == aws_tag.key && tag[key] == aws_tag.value }
+            @aws_hosted_zones ||= @route53_client.list_hosted_zones.hosted_zones.map do |zone|
+              {
+                zone: zone,
+                tags: @route53_client.list_tags_for_resource({resource_type: "hostedzone", resource_id: zone.id.split('/')[2]}).resource_tag_set.tags
               }
-              tags.any?
-            }
+            end
+
+            hosted_zones = @aws_hosted_zones.select do |z|
+              z[:tags].any? do |aws_tag|
+                tag.any? { |k, v| aws_tag.key = String(k) && aws_tag.value == v }
+              end
+            end
+
             case
             when hosted_zones.count == 1
-              hosted_zones.first
+              hosted_zones.first[:zone]
             when hosted_zones.count < 1
               raise "No hosted zone with tag '#{tag}' was found."
             when hosted_zones.count > 1
