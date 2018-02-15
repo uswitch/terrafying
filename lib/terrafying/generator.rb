@@ -7,6 +7,26 @@ require 'terrafying/aws'
 
 module Terrafying
 
+  class Ref
+
+    def initialize(var)
+      @var = var
+    end
+
+    def downcase
+      Ref.new("lower(#{@var})")
+    end
+
+    def strip
+      Ref.new("trimspace(#{@var})")
+    end
+
+    def to_s
+      "${#{@var}}"
+    end
+
+  end
+
   class Context
 
     REGION = ENV.fetch("AWS_REGION", "eu-west-1")
@@ -59,11 +79,11 @@ module Terrafying
     end
 
     def id_of(type,name)
-      "${#{type}.#{name}.id}"
+      output_of(type, name, "id")
     end
 
     def output_of(type, name, value)
-      "${#{type}.#{name}.#{value}}"
+      Ref.new("#{type}.#{name}.#{value}")
     end
 
     def pretty_generate
