@@ -33,6 +33,25 @@ RSpec.describe Terrafying::Ref do
     expect(ref.downcase.strip.to_s).to eq("${trimspace(lower(var.thingy))}")
   end
 
+  it "should be comparable" do
+    refs = [
+      Terrafying::Ref.new("var.b"),
+      Terrafying::Ref.new("var.a"),
+    ]
+
+    expect(refs.sort[0].to_s).to eq("${var.a}")
+  end
+
+  it "implements equality" do
+    a = Terrafying::Ref.new("var.a")
+    a2 = Terrafying::Ref.new("var.a")
+    b = Terrafying::Ref.new("var.b")
+
+    expect(a == a).to be true
+    expect(a == a2).to be true
+    expect(a == b).to be false
+  end
+
 end
 
 RSpec.describe Terrafying::Context do

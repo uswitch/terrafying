@@ -25,6 +25,14 @@ module Terrafying
       "${#{@var}}"
     end
 
+    def <=>(other)
+      self.to_s <=> other.to_s
+    end
+
+    def ==(other)
+      self.to_s == other.to_s
+    end
+
   end
 
   class Context
