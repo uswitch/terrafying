@@ -26,6 +26,11 @@ module Terrafying
       exit Config.new(path, options).graph
     end
 
+    desc "validate PATH", "Validate the generated Terraform"
+    def validate(path)
+      exit Config.new(path, options).validate
+    end
+
     desc "apply PATH", "Apply changes to resources"
     option :force, :aliases => ['f'], :type => :boolean, :desc => "Forcefully remove any pending locks"
     def apply(path)
