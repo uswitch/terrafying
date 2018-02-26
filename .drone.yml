@@ -40,6 +40,7 @@ pipeline:
     commands:
       - mkdir ~/.gem
       - "echo -e \"---\\n:rubygems_api_key: $${RUBYGEMS_API_KEY}\" > ~/.gem/credentials"
+      - chmod 0600 ~/.gem/credentials
       - sed -i 's/0\.0\.0/${DRONE_TAG}/' lib/terrafying/version.rb
       - gem build terrafying.gemspec
       - gem push -k terrafying-${DRONE_TAG}.gem
