@@ -1,4 +1,4 @@
 module Terrafying
-  VERSION = "1.3.2"
+  VERSION = "0.0.0" # will be inserted by Drone
   CLI_VERSION = "0.11.3"
 end
