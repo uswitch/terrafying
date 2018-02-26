@@ -57,6 +57,16 @@ module Terrafying
       exit_code
     end
 
+    def validate
+      exit_code = 1
+      with_config do
+        with_state(mode: :read) do
+          exit_code = exec_with_optional_target 'validate'
+        end
+      end
+      exit_code
+    end
+
     def apply
       exit_code = 1
       with_config do
