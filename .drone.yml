@@ -22,7 +22,7 @@ pipeline:
       event: push
       branch: master
 
-  tag:
+  docker-tag:
     image: plugins/docker
     repo: quay.io/uswitch/terrafying
     registry: quay.io
@@ -31,4 +31,15 @@ pipeline:
       - ${DRONE_TAG}
     when:
       event: tag
-      branch: master
+
+  gem-tag:
+    when:
+      event: tag
+    image: ruby:2.4
+    secrets: [RUBYGEMS_API_KEY]
+    commands:
+      - mkdir ~/.gem
+      - "echo -e \"---\\n:rubygems_api_key: $${RUBYGEMS_API_KEY}\" > ~/.gem/credentials"
+      - sed -i 's/0\.0\.0/${DRONE_TAG}/' lib/terrafying/version.rb
+      - gem build terrafying.gemspec
+      - gem push -k terrafying-${DRONE_TAG}.gem
