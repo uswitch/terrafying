@@ -3,4 +3,11 @@
 require 'bundler/setup'
 require 'terrafying'
 
-Terrafying::Cli.start(ARGV)
+if ARGV.count != 1
+  puts "Usage: terrafying [path]"
+  exit 1
+end
+
+load(ARGV[0])
+
+puts Terrafying::Root.pretty_generate
