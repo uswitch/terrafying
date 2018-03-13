@@ -56,6 +56,35 @@ module Terrafying
           end
       end
 
+      def security_group_in_vpc(vpc_id, name)
+        @security_groups_in_vpc ||= {}
+        @security_groups_in_vpc[vpc_id + name] ||=
+          begin
+            STDERR.puts "Looking up id of security group '#{name}'"
+            groups = @ec2_resource.security_groups(
+              {
+                filters: [
+                  {
+                    name: "group-name",
+                    values: [name],
+                  },
+                  {
+                    name: "vpc-id",
+                    values: [vpc_id],
+                  }
+                ],
+              }).limit(2)
+            case
+            when groups.count == 1
+              groups.first.id
+            when groups.count < 1
+              raise "No security group with name '#{name}' was found."
+            when groups.count > 1
+              raise "More than one security group with name '#{name}' found: " + groups.join(', ')
+            end
+          end
+      end
+
       def security_group_by_tags(tags)
         @security_groups_by_tags ||= {}
         @security_groups_by_tags[tags] ||=
@@ -159,6 +188,10 @@ module Terrafying
 
       def security_groups(*names)
         names.map{|n| security_group(n)}
+      end
+
+      def security_groups_in_vpc(vpc_id, *names)
+        names.map{|n| security_group_in_vpc(vpc_id, n)}
       end
 
       def subnet(name)
