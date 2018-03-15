@@ -129,17 +129,20 @@ module Terrafying
     end
 
     private
-    def targets(options)
-      @options[:target].split(",").map {|target| "-target=#{target}"}.join(" ")
+    def lock_timeout
+      "-lock-timeout=#{@options[:lock_timeout]}" if @options[:lock_timeout]
     end
 
-    def exec_with_optional_target(command)
-      cmd = if @options[:target]
-        "terraform #{command} #{targets(@options)}"
-      else
-        "terraform #{command}"
-      end
-      stream_command(cmd)
+    def targets
+      @options[:target].split(',').map { |target| "-target=#{target}" }.join(' ') if @options[:target]
+    end
+
+    def exec_with_optional_target(command, *args)
+      exec_with_args(command, targets, lock_timeout, *args)
+    end
+
+    def exec_with_args(command, *args)
+      stream_command("terraform #{command} #{args.join(' ')}")
     end
 
     def with_config(&block)
