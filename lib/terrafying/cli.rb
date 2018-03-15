@@ -2,6 +2,7 @@ require 'thor'
 
 module Terrafying
   class Cli < Thor
+    class_option :lock_timeout, :type => :string, :default => nil
     class_option :no_lock, :type => :boolean, :default => false
     class_option :keep, :type => :boolean, :default => false
     class_option :target, :type => :string, :default => nil
