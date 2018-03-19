@@ -7,18 +7,18 @@ require 'terrafying/aws'
 
 module Terrafying
 
-  class Ref
+  class Output
 
     def initialize(var)
       @var = var
     end
 
     def downcase
-      Ref.new("lower(#{@var})")
+      Output.new("lower(#{@var})")
     end
 
     def strip
-      Ref.new("trimspace(#{@var})")
+      Output.new("trimspace(#{@var})")
     end
 
     def to_s
@@ -33,6 +33,26 @@ module Terrafying
       self.to_s == other.to_s
     end
 
+  end
+
+  class Reference
+
+    def initialize(type, name)
+      @type = type
+      @name = name
+    end
+
+    def to_s
+      self["id"]
+    end
+
+    def [](key)
+      Terrafying::Output.new("#{@type}.#{@name}.#{key}")
+    end
+
+    def []=(k, v)
+      raise "You can't set a value this way"
+    end
   end
 
   class Context
@@ -65,13 +85,13 @@ module Terrafying
       @output["data"] ||= {}
       @output["data"][type.to_s] ||= {}
       @output["data"][type.to_s][name.to_s] = spec
-      id_of(type, name)
+      Reference.new(type, name)
     end
 
     def resource(type, name, attributes)
       @output["resource"][type.to_s] ||= {}
       @output["resource"][type.to_s][name.to_s] = attributes
-      id_of(type, name)
+      Reference.new(type, name)
     end
 
     def template(relative_path, params = {})
@@ -91,7 +111,7 @@ module Terrafying
     end
 
     def output_of(type, name, value)
-      Ref.new("#{type}.#{name}.#{value}")
+      Output.new("#{type}.#{name}.#{value}")
     end
 
     def pretty_generate

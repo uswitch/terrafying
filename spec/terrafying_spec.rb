@@ -1,51 +1,51 @@
 
 require 'terrafying'
 
-RSpec.describe Terrafying::Ref do
+RSpec.describe Terrafying::Output do
 
   context "to_s" do
     it "should return an interpolated string" do
-      ref = Terrafying::Ref.new("var.thingy")
+      out = Terrafying::Output.new("var.thingy")
 
-      expect(ref.to_s).to eq("${var.thingy}")
+      expect(out.to_s).to eq("${var.thingy}")
     end
   end
 
   context "downcase" do
     it "should wrap it in lower" do
-      ref = Terrafying::Ref.new("var.thingy")
+      out = Terrafying::Output.new("var.thingy")
 
-      expect(ref.downcase.to_s).to eq("${lower(var.thingy)}")
+      expect(out.downcase.to_s).to eq("${lower(var.thingy)}")
     end
   end
 
   context "strip" do
     it "should wrap it in trimspace" do
-      ref = Terrafying::Ref.new("var.thingy")
+      out = Terrafying::Output.new("var.thingy")
 
-      expect(ref.strip.to_s).to eq("${trimspace(var.thingy)}")
+      expect(out.strip.to_s).to eq("${trimspace(var.thingy)}")
     end
   end
 
   it "should stack functions" do
-    ref = Terrafying::Ref.new("var.thingy")
+    out = Terrafying::Output.new("var.thingy")
 
-    expect(ref.downcase.strip.to_s).to eq("${trimspace(lower(var.thingy))}")
+    expect(out.downcase.strip.to_s).to eq("${trimspace(lower(var.thingy))}")
   end
 
   it "should be comparable" do
-    refs = [
-      Terrafying::Ref.new("var.b"),
-      Terrafying::Ref.new("var.a"),
+    outputs = [
+      Terrafying::Output.new("var.b"),
+      Terrafying::Output.new("var.a"),
     ]
 
-    expect(refs.sort[0].to_s).to eq("${var.a}")
+    expect(outputs.sort[0].to_s).to eq("${var.a}")
   end
 
   it "implements equality" do
-    a = Terrafying::Ref.new("var.a")
-    a2 = Terrafying::Ref.new("var.a")
-    b = Terrafying::Ref.new("var.b")
+    a = Terrafying::Output.new("var.a")
+    a2 = Terrafying::Output.new("var.a")
+    b = Terrafying::Output.new("var.b")
 
     expect(a == a).to be true
     expect(a == a2).to be true
@@ -54,27 +54,54 @@ RSpec.describe Terrafying::Ref do
 
 end
 
-RSpec.describe Terrafying::Context do
+RSpec.describe Terrafying::Reference do
 
-  context "output_of" do
+  it "should output" do
+    ref = Terrafying::Reference.new("aws_kms_key", "secret")
 
-    it "should use a ref" do
-      context = Terrafying::Context.new
+    out = ref["arn"]
 
-      ref = context.output_of(:aws_security_group, "foo", "bar").downcase
-
-      expect("#{ref}").to eq("${lower(aws_security_group.foo.bar)}")
-    end
-
+    expect(out).to be_a(Terrafying::Output)
+    expect(out.to_s).to eq("${aws_kms_key.secret.arn}")
   end
 
-  context "id_of" do
-    it "should use a ref" do
+  it "should default to id" do
+    ref = Terrafying::Reference.new("aws_kms_key", "secret")
+
+    expect(ref.to_s).to eq("${aws_kms_key.secret.id}")
+  end
+
+  it "should't let you try and set" do
+    ref = Terrafying::Reference.new("aws_kms_key", "secret")
+
+    expect {
+      ref["arn"] = "foo"
+    }.to raise_error RuntimeError
+  end
+
+end
+
+RSpec.describe Terrafying::Context do
+
+  context "resource" do
+    it "should use a reference" do
       context = Terrafying::Context.new
 
-      ref = context.id_of(:aws_security_group, "foo").downcase
+      key = context.resource(:aws_kms_key, "secret", {})
 
-      expect("#{ref}").to eq("${lower(aws_security_group.foo.id)}")
+      expect(key).to be_a(Terrafying::Reference)
+      expect(key["arn"].downcase).to eq("${lower(aws_kms_key.secret.arn)}")
+    end
+  end
+
+  context "output_of" do
+    it "should use an output" do
+      context = Terrafying::Context.new
+
+      arn = context.output_of(:aws_kms_key, "secret", "arn")
+
+      expect(arn).to be_a(Terrafying::Output)
+      expect(arn.downcase).to eq("${lower(aws_kms_key.secret.arn)}")
     end
   end
 
