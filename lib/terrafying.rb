@@ -61,6 +61,15 @@ module Terrafying
     def []=(k, v)
       raise "You can't set a value this way"
     end
+
+    def <=>(other)
+      self.to_s <=> other.to_s
+    end
+
+    def ==(other)
+      self.to_s == other.to_s
+    end
+
   end
 
   class Context
