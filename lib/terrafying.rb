@@ -25,6 +25,10 @@ module Terrafying
       "${#{@var}}"
     end
 
+    def to_str
+      to_s
+    end
+
     def <=>(other)
       self.to_s <=> other.to_s
     end
@@ -44,6 +48,10 @@ module Terrafying
 
     def to_s
       self["id"]
+    end
+
+    def to_str
+      to_s
     end
 
     def [](key)
