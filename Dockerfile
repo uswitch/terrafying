@@ -1,6 +1,6 @@
 FROM ruby:2.4-alpine3.7
 
-RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/0.11.3/terraform_0.11.3_linux_amd64.zip \
+RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/0.11.5/terraform_0.11.5_linux_amd64.zip \
  && unzip terraform.zip \
  && install -m 755 terraform /usr/bin/terraform \
  && install -d ${HOME}/.terraform.d/plugins/linux_amd64 \
