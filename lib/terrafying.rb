@@ -107,6 +107,12 @@ module Terrafying
     def provider(name, spec)
       @output["provider"] ||= {}
       @output["provider"][name] = spec
+
+      if spec.has_key?(:alias)
+        "aws.#{spec[:alias]}"
+      else
+        "aws"
+      end
     end
 
     def data(type, name, spec)
