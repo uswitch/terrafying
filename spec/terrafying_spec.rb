@@ -79,6 +79,12 @@ RSpec.describe Terrafying::Reference do
     }.to raise_error RuntimeError
   end
 
+  it "should prefix with data when appropriate" do
+    ref = Terrafying::Reference.new("aws_kms_key", "secret", kind: "data")
+
+    expect(ref.to_s).to eq("${data.aws_kms_key.secret.id}")
+  end
+
 end
 
 RSpec.describe Terrafying::Context do
@@ -91,6 +97,17 @@ RSpec.describe Terrafying::Context do
 
       expect(key).to be_a(Terrafying::Reference)
       expect(key["arn"].downcase).to eq("${lower(aws_kms_key.secret.arn)}")
+    end
+  end
+
+  context "data" do
+    it "should use a reference" do
+      context = Terrafying::Context.new
+
+      key = context.data(:aws_kms_key, "secret", {})
+
+      expect(key).to be_a(Terrafying::Reference)
+      expect(key["arn"].downcase).to eq("${lower(data.aws_kms_key.secret.arn)}")
     end
   end
 

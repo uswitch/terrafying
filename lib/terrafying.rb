@@ -41,7 +41,11 @@ module Terrafying
 
   class Reference
 
-    def initialize(type, name)
+    def initialize(type, name, options = {})
+      @options = {
+        kind: "resource",
+      }.merge(options)
+
       @type = type
       @name = name
     end
@@ -55,7 +59,14 @@ module Terrafying
     end
 
     def [](key)
-      Terrafying::Output.new("#{@type}.#{@name}.#{key}")
+      case @options[:kind]
+      when "resource"
+        Terrafying::Output.new("#{@type}.#{@name}.#{key}")
+      when "data"
+        Terrafying::Output.new("data.#{@type}.#{@name}.#{key}")
+      else
+        raise "Don't know what type of thing in terraform this is referencing"
+      end
     end
 
     def []=(k, v)
@@ -102,7 +113,7 @@ module Terrafying
       @output["data"] ||= {}
       @output["data"][type.to_s] ||= {}
       @output["data"][type.to_s][name.to_s] = spec
-      Reference.new(type, name)
+      Reference.new(type, name, kind: "data")
     end
 
     def resource(type, name, attributes)
