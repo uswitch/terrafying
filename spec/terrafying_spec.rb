@@ -11,6 +11,14 @@ RSpec.describe Terrafying::Output do
     end
   end
 
+  context "[]" do
+    it "should wrap it in lower" do
+      out = Terrafying::Output.new("var.thingy")
+
+      expect(out[0].to_s).to eq("${element(var.thingy,0)}")
+    end
+  end
+
   context "downcase" do
     it "should wrap it in lower" do
       out = Terrafying::Output.new("var.thingy")

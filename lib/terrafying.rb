@@ -21,6 +21,10 @@ module Terrafying
       Output.new("trimspace(#{@var})")
     end
 
+    def [](index)
+      Output.new("element(#{@var},#{index})")
+    end
+
     def to_s
       "${#{@var}}"
     end
