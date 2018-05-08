@@ -19,14 +19,14 @@ Gem::Specification.new do |spec|
   spec.files         = `git ls-files lib/`.split($/)
   spec.require_paths = ["lib"]
 
-  spec.add_development_dependency "bundler", "~> 1.11"
-  spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_development_dependency 'bundler', '~> 1.11'
+  spec.add_development_dependency 'rake', '~> 10.0'
   spec.add_development_dependency 'rspec', '~> 3.7'
   spec.add_development_dependency 'rspec-mocks', '~> 3.7'
 
-  spec.add_runtime_dependency 'aws-sdk', '~> 2'
-  spec.add_runtime_dependency 'thor', '~> 0.19.1'
+  spec.add_runtime_dependency 'aws-sdk', '~> 3'
   spec.add_runtime_dependency 'deep_merge', '~> 1.1.1'
   spec.add_runtime_dependency 'netaddr', '~> 1.5'
+  spec.add_runtime_dependency 'thor', '~> 0.19.1'
   spec.add_runtime_dependency 'xxhash', '~> 0.4.0'
 end
