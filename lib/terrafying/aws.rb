@@ -9,13 +9,17 @@ module Terrafying
       attr_reader :region
 
       def initialize(region)
-        full_jitter = lambda { |c| Kernel.sleep(Kernel.rand(0..[2, (0.3 * 2**c.retries)].min)) }
+        half_jitter = lambda { |c|
+          sleep_time = 0.5 * (2**c.retries)
+          Kernel.sleep(Kernel.rand((sleep_time / 2)..sleep_time))
+        }
 
         ::Aws.config.update({
           region: region,
-          retry_limit: 5,
-          retry_backoff: full_jitter
+          retry_limit: 7,
+          retry_backoff: half_jitter
         })
+
         @autoscaling_client = ::Aws::AutoScaling::Client.new
         @ec2_resource = ::Aws::EC2::Resource.new
         @ec2_client = ::Aws::EC2::Client.new
