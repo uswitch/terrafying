@@ -63,6 +63,12 @@ module Terrafying
     def provider(name, spec)
       @output["provider"] ||= {}
       @output["provider"][name] = spec
+
+      if spec[:alias]
+        "#{name}.#{spec[:alias]}"
+      else
+        name.to_s
+      end
     end
 
     def data(type, name, spec)

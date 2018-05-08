@@ -56,6 +56,26 @@ end
 
 RSpec.describe Terrafying::Context do
 
+  context "provider" do
+
+    it "should output a string" do
+      context = Terrafying::Context.new
+
+      provider = context.provider(:aws, {})
+
+      expect(provider).to eq("aws")
+    end
+
+    it "should output a string with alias" do
+      context = Terrafying::Context.new
+
+      provider = context.provider(:aws, { alias: "west" })
+
+      expect(provider).to eq("aws.west")
+    end
+
+  end
+
   context "output_of" do
 
     it "should use a ref" do
