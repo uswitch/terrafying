@@ -1,4 +1,9 @@
-require 'aws-sdk'
+require 'aws-sdk-applicationautoscaling'
+require 'aws-sdk-ec2'
+require 'aws-sdk-elasticloadbalancingv2'
+require 'aws-sdk-route53'
+require 'aws-sdk-s3'
+require 'aws-sdk-sts'
 
 Aws.use_bundled_cert!
 
