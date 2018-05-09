@@ -40,20 +40,16 @@ module Terrafying
         @account_id_cache ||= @sts_client.get_caller_identity.account
       end
 
+      def all_security_groups
+        @all_security_groups ||= @ec2_resource.security_groups.to_a
+      end
+
       def security_group(name)
         @security_groups ||= {}
         @security_groups[name] ||=
           begin
             STDERR.puts "Looking up id of security group '#{name}'"
-            groups = @ec2_resource.security_groups(
-              {
-                filters: [
-                  {
-                    name: "group-name",
-                    values: [name],
-                  },
-                ],
-              }).limit(2)
+            groups = all_security_groups.select { |g| g.group_name == name }.take(2)
             case
             when groups.count == 1
               groups.first.id
@@ -70,19 +66,7 @@ module Terrafying
         @security_groups_in_vpc[vpc_id + name] ||=
           begin
             STDERR.puts "Looking up id of security group '#{name}'"
-            groups = @ec2_resource.security_groups(
-              {
-                filters: [
-                  {
-                    name: "group-name",
-                    values: [name],
-                  },
-                  {
-                    name: "vpc-id",
-                    values: [vpc_id],
-                  }
-                ],
-              }).limit(2)
+            groups = all_security_groups.select { |g| g.vpc_id == vpc_id && g.group_name == name }.take(2)
             case
             when groups.count == 1
               groups.first.id
@@ -98,20 +82,7 @@ module Terrafying
         @security_groups_by_tags ||= {}
         @security_groups_by_tags[tags] ||=
           begin
-            groups = @ec2_client.describe_security_groups(
-              {
-                filters: [
-                  {
-                    name: "tag-key",
-                    values: tags.keys,
-                  },
-                  {
-                    name: "tag-value",
-                    values: tags.values
-                  }
-                ]
-              },
-            ).security_groups
+            groups = all_security_groups.select { |g| g.tags.any? { |t| t.key == tags.keys && t.value == tags.values } }.take(2)
             case
             when groups.count == 1
               groups.first.id
