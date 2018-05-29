@@ -1,4 +1,20 @@
 pipeline:
+  test:
+    image: ruby:2.5
+    commands:
+      - bundle install
+      - rake spec
+    when:
+      event: push
+
+  build:
+    image: ruby:2.5
+    commands:
+      - rake version
+      - rake build
+    when:
+      event: [push, tag]
+
   docker:
     image: plugins/docker
     repo: quay.io/uswitch/terrafying
@@ -10,16 +26,13 @@ pipeline:
     when:
       event: push
 
-  docker-latest:
-    image: plugins/docker
-    repo: quay.io/uswitch/terrafying
-    registry: quay.io
-    secrets: [ docker_username, docker_password ]
-    tags:
-      - ${DRONE_COMMIT_SHA}
-      - latest
+  push:
+    image: ruby:2.5
+    secrets: [ rubygems_api_key ]
+    commands:
+      - rake push
     when:
-      event: push
+      event: tag
       branch: master
 
   docker-tag:
@@ -27,18 +40,9 @@ pipeline:
     repo: quay.io/uswitch/terrafying
     registry: quay.io
     secrets: [ docker_username, docker_password ]
-    tags:
-      - ${DRONE_TAG}
+    build_args:
+      - TERRAFYING_VERSION=${DRONE_TAG}
+    auto_tag: true
     when:
       event: tag
-
-  gem-tag:
-    when:
-      event: tag
-    image: ruby:2.4
-    secrets: [RUBYGEMS_API_KEY]
-    commands:
-      - bundle install
-      - sed -i 's/0\.0\.0/${DRONE_TAG}/' lib/terrafying/version.rb
-      - gem build terrafying.gemspec
-      - bundle exec rake push
+      branch: master
