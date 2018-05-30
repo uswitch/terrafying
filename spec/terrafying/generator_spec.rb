@@ -74,6 +74,32 @@ RSpec.describe Terrafying::Context do
       expect(provider).to eq("aws.west")
     end
 
+    it 'should append providers to an array' do
+      context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west')
+
+      providers = context.output_with_children['provider']
+
+      expect(providers).to include(
+        a_hash_including(aws: { alias: 'west' })
+      )
+    end
+
+    it 'should append multiple providers to an array' do
+      context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west')
+      context.provider(:aws, alias: 'east')
+
+      providers = context.output_with_children['provider']
+
+      expect(providers).to include(
+        a_hash_including(aws: { alias: 'west' }),
+        a_hash_including(aws: { alias: 'east' })
+      )
+    end
+
   end
 
   context "output_of" do
