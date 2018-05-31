@@ -100,6 +100,17 @@ RSpec.describe Terrafying::Context do
       )
     end
 
+    it 'should not allow duplicate providers' do
+      context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west')
+      context.provider(:aws, alias: 'west')
+
+      providers = context.output_with_children['provider']
+
+      expect(providers.size).to eq(1)
+    end
+
   end
 
   context "output_of" do

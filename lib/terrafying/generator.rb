@@ -61,7 +61,7 @@ module Terrafying
     end
 
     def provider(name, spec)
-      @output["provider"] ||= []
+      @output["provider"] ||= Set.new
       @output["provider"] << { name => spec }
 
       if spec[:alias]
