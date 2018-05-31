@@ -148,7 +148,7 @@ module Terrafying
     def initialize
       super
 
-      output["provider"] = PROVIDER_DEFAULTS
+      PROVIDER_DEFAULTS.each { |name, spec| provider(name, spec) }
     end
 
     def backend(name, spec)
