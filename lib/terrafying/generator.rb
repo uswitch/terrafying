@@ -61,14 +61,16 @@ module Terrafying
     end
 
     def provider(name, spec)
-      @output["provider"] ||= {}
-      @output["provider"][name] = spec
+      key = [name, spec[:alias]].compact.join('.')
+      @providers ||= {}
+      raise "Duplicate provider configuration detected for #{key}" if key_exists_spec_differs(key, name, spec)
+      @providers[key] = { name.to_s => spec }
+      @output['provider'] = @providers.map { |_, v| v }
+      key
+    end
 
-      if spec[:alias]
-        "#{name}.#{spec[:alias]}"
-      else
-        name.to_s
-      end
+    def key_exists_spec_differs(key, name, spec)
+      @providers.key?(key) && spec != @providers[key][name.to_s]
     end
 
     def data(type, name, spec)

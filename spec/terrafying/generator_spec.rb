@@ -69,9 +69,74 @@ RSpec.describe Terrafying::Context do
     it "should output a string with alias" do
       context = Terrafying::Context.new
 
-      provider = context.provider(:aws, { alias: "west" })
+      provider = context.provider(:aws, alias: 'west')
 
       expect(provider).to eq("aws.west")
+    end
+
+    it 'should append providers to an array' do
+      context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west')
+
+      providers = context.output_with_children['provider']
+
+      expect(providers).to include(
+        a_hash_including('aws' => { alias: 'west' })
+      )
+    end
+
+    it 'should append multiple providers to an array' do
+      context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west')
+      context.provider(:aws, alias: 'east')
+
+      providers = context.output_with_children['provider']
+
+      expect(providers).to include(
+        a_hash_including('aws' => { alias: 'west' }),
+        a_hash_including('aws' => { alias: 'east' })
+      )
+    end
+
+    it 'should not allow duplicate providers' do
+      context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west')
+      context.provider(:aws, alias: 'west')
+
+      providers = context.output_with_children['provider']
+
+      expect(providers.size).to eq(1)
+    end
+
+    it 'should reject duplicate providers on name + alias' do
+      context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west', region: 'eu-west-1')
+      expect {
+        context.provider(:aws, alias: 'west', region: 'eu-west-2')
+      }.to raise_error(/aws\.west/)
+
+    end
+
+    it 'should merge nested contexts with providers' do
+      context = Terrafying::Context.new
+      nested_context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west', region: 'eu-west-1')
+      nested_context.provider(:aws, alias: 'west', region: 'eu-west-1')
+      nested_context.provider(:aws, alias: 'east', region: 'eu-east-1')
+      context.add! nested_context
+
+      providers = context.output_with_children['provider']
+
+      expect(providers.size).to eq(2)
+      expect(providers).to include(
+        a_hash_including('aws' => { alias: 'west', region: 'eu-west-1' }),
+        a_hash_including('aws' => { alias: 'east', region: 'eu-east-1' })
+      )
     end
 
   end
