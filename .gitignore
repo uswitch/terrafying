@@ -1,6 +1,7 @@
 .gemconfig
 .nix-gems
 .idea
+Gemfile.lock
 
 /.bundle/
 /.yardoc

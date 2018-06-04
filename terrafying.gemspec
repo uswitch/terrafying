@@ -23,6 +23,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rake', '~> 10.0'
   spec.add_development_dependency 'rspec', '~> 3.7'
   spec.add_development_dependency 'rspec-mocks', '~> 3.7'
+  spec.add_development_dependency 'pry'
 
   spec.add_runtime_dependency 'aws-sdk-autoscaling', '~> 1'
   spec.add_runtime_dependency 'aws-sdk-core', '~> 3'
