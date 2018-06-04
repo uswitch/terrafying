@@ -4,8 +4,6 @@ require 'pathname'
 require 'securerandom'
 require 'tempfile'
 
-require 'hash/deep_merge'
-
 require 'terrafying/aws'
 require 'terrafying/cli'
 require 'terrafying/generator'

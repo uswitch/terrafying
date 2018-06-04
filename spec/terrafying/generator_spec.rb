@@ -121,12 +121,47 @@ RSpec.describe Terrafying::Context do
 
     end
 
-    it 'should merge nested contexts with providers' do
+    it 'should merge nested contexts with default root providers' do
+      root_context   = Terrafying::RootContext.new
+      nested_context = Terrafying::Context.new
+      more_nested    = Terrafying::Context.new
+
+      more_nested.provider(:aws, alias: 'east', region: 'eu-east-1')
+      nested_context.add! more_nested
+      root_context.add! nested_context
+
+      providers = root_context.output_with_children['provider']
+
+      expect(providers.size).to eq(2)
+      expect(providers).to include(
+        a_hash_including('aws' => { region: 'eu-west-1' }),
+        a_hash_including('aws' => { alias: 'east', region: 'eu-east-1' })
+      )
+    end
+
+    it 'should merge nested contexts with duplicate providers' do
       context = Terrafying::Context.new
       nested_context = Terrafying::Context.new
 
       context.provider(:aws, alias: 'west', region: 'eu-west-1')
       nested_context.provider(:aws, alias: 'west', region: 'eu-west-1')
+      nested_context.provider(:aws, alias: 'east', region: 'eu-east-1')
+      context.add! nested_context
+
+      providers = context.output_with_children['provider']
+
+      expect(providers.size).to eq(2)
+      expect(providers).to include(
+        a_hash_including('aws' => { alias: 'west', region: 'eu-west-1' }),
+        a_hash_including('aws' => { alias: 'east', region: 'eu-east-1' })
+      )
+    end
+
+    it 'should merge nested contexts with providers' do
+      context = Terrafying::Context.new
+      nested_context = Terrafying::Context.new
+
+      context.provider(:aws, alias: 'west', region: 'eu-west-1')
       nested_context.provider(:aws, alias: 'east', region: 'eu-east-1')
       context.add! nested_context
 

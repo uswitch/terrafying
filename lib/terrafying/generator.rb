@@ -65,7 +65,7 @@ module Terrafying
       @providers ||= {}
       raise "Duplicate provider configuration detected for #{key}" if key_exists_spec_differs(key, name, spec)
       @providers[key] = { name.to_s => spec }
-      @output['provider'] = @providers.map { |_, v| v }
+      @output['provider'] = @providers.values
       key
     end
 
