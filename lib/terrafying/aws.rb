@@ -352,7 +352,7 @@ module Terrafying
           begin
             STDERR.puts "looking for a hosted zone with fqdn '#{fqdn}'"
             hosted_zones = @route53_client.list_hosted_zones_by_name({ dns_name: fqdn }).hosted_zones.select { |zone|
-              zone.name == "#{fqdn}."
+              zone.name == "#{fqdn}." && !zone.config.private_zone
             }
             case
             when hosted_zones.count == 1
