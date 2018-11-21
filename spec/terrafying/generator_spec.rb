@@ -176,6 +176,24 @@ RSpec.describe Terrafying::Context do
 
   end
 
+  it 'should reject duplicate resources' do
+    context = Terrafying::Context.new
+
+    context.resource(:aws_instance, "wibble", {})
+    expect {
+      context.resource(:aws_instance, "wibble", {})
+    }.to raise_error(/aws_instance.wibble/)
+  end
+
+  it 'should reject duplicate data' do
+    context = Terrafying::Context.new
+
+    context.data(:aws_instance, "wibble", {})
+    expect {
+      context.data(:aws_instance, "wibble", {})
+    }.to raise_error(/aws_instance.wibble/)
+  end
+
   context "output_of" do
 
     it "should use a ref" do
