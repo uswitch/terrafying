@@ -76,12 +76,16 @@ module Terrafying
     def data(type, name, spec)
       @output["data"] ||= {}
       @output["data"][type.to_s] ||= {}
+
+      raise "Data already exists #{type.to_s}.#{name.to_s}" if @output["data"][type.to_s].has_key? name.to_s
       @output["data"][type.to_s][name.to_s] = spec
       id_of(type, name)
     end
 
     def resource(type, name, attributes)
       @output["resource"][type.to_s] ||= {}
+
+      raise "Resource already exists #{type.to_s}.#{name.to_s}" if @output["resource"][type.to_s].has_key? name.to_s
       @output["resource"][type.to_s][name.to_s] = attributes
       id_of(type, name)
     end
