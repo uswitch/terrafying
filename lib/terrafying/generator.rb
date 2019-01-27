@@ -90,6 +90,13 @@ module Terrafying
       id_of(type, name)
     end
 
+    def output_variable(name, attributes)
+      @output["output"] ||= {}
+
+      raise "Output already exists #{name.to_s}" if @output["output"].has_key? name.to_s
+      @output["output"][name.to_s] = attributes
+    end
+
     def template(relative_path, params = {})
       dir = caller_locations[0].path
       filename = File.join(File.dirname(dir), relative_path)
