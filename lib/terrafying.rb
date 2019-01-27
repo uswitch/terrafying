@@ -156,28 +156,6 @@ module Terrafying
       JSON.pretty_generate(result_with_children)
     end
 
-    def resource_names
-      res = result_with_children
-      ret = []
-      for type in res["resource"].keys
-        for id in res["resource"][type].keys
-          ret << "#{type}.#{id}"
-        end
-      end
-      ret
-    end
-
-    def resources
-      res = result_with_children
-      ret = []
-      for type in res["resource"].keys
-        for id in res["resource"][type].keys
-          ret << "${#{type}.#{id}.id}"
-        end
-      end
-      ret
-    end
-
     def add!(*c)
       @children.push(*c)
       c[0]
