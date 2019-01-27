@@ -105,6 +105,13 @@ RSpec.describe Terrafying::Context do
       expect(key).to be_a(Terrafying::Reference)
       expect(key["arn"].downcase).to eq("${lower(aws_kms_key.secret.arn)}")
     end
+
+    it "should raise on duplicates" do
+      context = Terrafying::Context.new
+
+      context.resource(:aws_kms_key, "secret", {})
+      expect { context.resource(:aws_kms_key, "secret", {}) }.to raise_error(/Resource already exists secret/)
+    end
   end
 
   context "data" do
@@ -115,6 +122,22 @@ RSpec.describe Terrafying::Context do
 
       expect(key).to be_a(Terrafying::Reference)
       expect(key["arn"].downcase).to eq("${lower(data.aws_kms_key.secret.arn)}")
+    end
+
+    it "should raise on duplicates" do
+      context = Terrafying::Context.new
+
+      context.data(:aws_kms_key, "secret", {})
+      expect { context.data(:aws_kms_key, "secret", {}) }.to raise_error(/Data source already exists secret/)
+    end
+  end
+
+  context "output" do
+    it "should raise on duplicates" do
+      context = Terrafying::Context.new
+
+      context.output("resource_name", {})
+      expect { context.output("resource_name", {}) }.to raise_error(/Output already exists resource_name/)
     end
   end
 
@@ -133,17 +156,6 @@ RSpec.describe Terrafying::Context do
       key = context.provider("aws", { alias: "west" })
 
       expect(key).to eq("aws.west")
-    end
-  end
-
-  context "output_of" do
-    it "should use an interpolation" do
-      context = Terrafying::Context.new
-
-      arn = context.output_of(:aws_kms_key, "secret", "arn")
-
-      expect(arn).to be_a(Terrafying::Interpolation)
-      expect(arn.downcase).to eq("${lower(aws_kms_key.secret.arn)}")
     end
   end
 
@@ -185,6 +197,37 @@ RSpec.describe Terrafying::Context do
       expect(id).to be_a(Terrafying::Interpolation)
       expect(id).to eq("${data.aws_kms_key.secret.id}")
     end
+  end
+
+  it "should generate a proper result" do
+    context = Terrafying::Context.new
+
+    context.data(:aws_caller_identity, "current", {})
+    resource = context.resource(:aws_kms_key, "secret", { key_id: context.attribute_of(:aws_caller_identity, "current", "account_id", kind: "data") })
+    context.output(:something, { value: resource["id"] })
+
+    expect(context.pretty_generate).to eq(<<~JSON.chomp)
+      {
+        "resource": {
+          "aws_kms_key": {
+            "secret": {
+              "key_id": "${data.aws_caller_identity.current.account_id}"
+            }
+          }
+        },
+        "data": {
+          "aws_caller_identity": {
+            "current": {
+            }
+          }
+        },
+        "output": {
+          "something": {
+            "value": "${aws_kms_key.secret.id}"
+          }
+        }
+      }
+    JSON
   end
 
 end

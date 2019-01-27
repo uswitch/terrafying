@@ -121,14 +121,29 @@ module Terrafying
     def data(type, name, spec)
       @result["data"] ||= {}
       @result["data"][type.to_s] ||= {}
+
+      raise "Data source already exists #{name.to_s}" if @result["data"][type.to_s].key? name.to_s
       @result["data"][type.to_s][name.to_s] = spec
+
       Reference.new(type, name, kind: "data")
     end
 
     def resource(type, name, attributes)
       @result["resource"][type.to_s] ||= {}
+
+      raise "Resource already exists #{name.to_s}" if @result["resource"][type.to_s].key?(name.to_s)
       @result["resource"][type.to_s][name.to_s] = attributes
+
       Reference.new(type, name)
+    end
+
+    def output(name, attributes)
+      @result["output"] ||= {}
+
+      raise "Output already exists #{name.to_s}" if @result["output"].key? name.to_s
+      @result["output"][name.to_s] = attributes
+
+      nil
     end
 
     def template(relative_path, params = {})
@@ -144,13 +159,13 @@ module Terrafying
     end
 
     def id_of(type, name, options = {})
-      output_of(type, name, "id", options)
+      attribute_of(type, name, "id", options)
     end
 
-    def output_of(type, name, value, options = {})
+    def attribute_of(type, name, value, options = {})
       Reference.new(type, name, options)[value]
     end
-    alias attribute_of output_of
+    alias output_of attribute_of # delete this since this will be 2.0?
 
     def pretty_generate
       JSON.pretty_generate(result_with_children)
