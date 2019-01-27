@@ -94,10 +94,10 @@ module Terrafying
       aws: { region: REGION }
     }
 
-    attr_reader :output
+    attr_reader :result
 
     def initialize
-      @output = {
+      @result = {
         "resource" => {}
       }
       @children = []
@@ -108,8 +108,8 @@ module Terrafying
     end
 
     def provider(name, spec)
-      @output["provider"] ||= {}
-      @output["provider"][name] = spec
+      @result["provider"] ||= {}
+      @result["provider"][name] = spec
 
       if spec.has_key?(:alias)
         "aws.#{spec[:alias]}"
@@ -119,15 +119,15 @@ module Terrafying
     end
 
     def data(type, name, spec)
-      @output["data"] ||= {}
-      @output["data"][type.to_s] ||= {}
-      @output["data"][type.to_s][name.to_s] = spec
+      @result["data"] ||= {}
+      @result["data"][type.to_s] ||= {}
+      @result["data"][type.to_s][name.to_s] = spec
       Reference.new(type, name, kind: "data")
     end
 
     def resource(type, name, attributes)
-      @output["resource"][type.to_s] ||= {}
-      @output["resource"][type.to_s][name.to_s] = attributes
+      @result["resource"][type.to_s] ||= {}
+      @result["resource"][type.to_s][name.to_s] = attributes
       Reference.new(type, name)
     end
 
@@ -139,8 +139,8 @@ module Terrafying
       erb.result(OpenStruct.new(params).instance_eval { binding })
     end
 
-    def output_with_children
-      @children.inject(@output) { |out, c| out.deep_merge(c.output_with_children) }
+    def result_with_children
+      @children.inject(@result) { |res, c| res.deep_merge(c.result_with_children) }
     end
 
     def id_of(type, name, options = {})
@@ -153,14 +153,14 @@ module Terrafying
     alias attribute_of output_of
 
     def pretty_generate
-      JSON.pretty_generate(output_with_children)
+      JSON.pretty_generate(result_with_children)
     end
 
     def resource_names
-      out = output_with_children
+      res = result_with_children
       ret = []
-      for type in out["resource"].keys
-        for id in out["resource"][type].keys
+      for type in res["resource"].keys
+        for id in res["resource"][type].keys
           ret << "#{type}.#{id}"
         end
       end
@@ -168,10 +168,10 @@ module Terrafying
     end
 
     def resources
-      out = output_with_children
+      res = result_with_children
       ret = []
-      for type in out["resource"].keys
-        for id in out["resource"][type].keys
+      for type in res["resource"].keys
+        for id in res["resource"][type].keys
           ret << "${#{type}.#{id}.id}"
         end
       end
@@ -194,11 +194,11 @@ module Terrafying
     def initialize
       super
 
-      output["provider"] = PROVIDER_DEFAULTS
+      result["provider"] = PROVIDER_DEFAULTS
     end
 
     def backend(name, spec)
-      @output["terraform"] = {
+      @result["terraform"] = {
         backend: {
           name => spec,
         },
