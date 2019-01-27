@@ -1,5 +1,4 @@
 require 'json'
-require 'base64'
 require 'erb'
 require 'ostruct'
 require 'deep_merge'
@@ -144,13 +143,14 @@ module Terrafying
       @children.inject(@output) { |out, c| out.deep_merge(c.output_with_children) }
     end
 
-    def id_of(type, name)
-      output_of(type, name, "id")
+    def id_of(type, name, options = {})
+      output_of(type, name, "id", options)
     end
 
-    def output_of(type, name, value)
-      Interpolation.new("#{type}.#{name}.#{value}")
+    def output_of(type, name, value, options = {})
+      Reference.new(type, name, options)[value]
     end
+    alias attribute_of output_of
 
     def pretty_generate
       JSON.pretty_generate(output_with_children)
@@ -230,6 +230,7 @@ module Terrafying
       tf_safe
       id_of
       output_of
+      attribute_of
     ].each { |name|
       define_method(name) { |*args|
         Root.send(name, *args)

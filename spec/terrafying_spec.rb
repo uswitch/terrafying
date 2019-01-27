@@ -4,40 +4,40 @@ RSpec.describe Terrafying::Interpolation do
 
   context "to_s" do
     it "should return an interpolated string" do
-      out = Terrafying::Interpolation.new("var.thingy")
+      interpolation = Terrafying::Interpolation.new("var.thingy")
 
-      expect(out.to_s).to eq("${var.thingy}")
+      expect(interpolation.to_s).to eq("${var.thingy}")
     end
   end
 
   context "[]" do
     it "should wrap it in element with index" do
-      out = Terrafying::Interpolation.new("var.thingy")
+      interpolation = Terrafying::Interpolation.new("var.thingy")
 
-      expect(out[0].to_s).to eq("${element(var.thingy,0)}")
+      expect(interpolation[0].to_s).to eq("${element(var.thingy,0)}")
     end
   end
 
   context "downcase" do
     it "should wrap it in lower" do
-      out = Terrafying::Interpolation.new("var.thingy")
+      interpolation = Terrafying::Interpolation.new("var.thingy")
 
-      expect(out.downcase.to_s).to eq("${lower(var.thingy)}")
+      expect(interpolation.downcase.to_s).to eq("${lower(var.thingy)}")
     end
   end
 
   context "strip" do
     it "should wrap it in trimspace" do
-      out = Terrafying::Interpolation.new("var.thingy")
+      interpolation = Terrafying::Interpolation.new("var.thingy")
 
-      expect(out.strip.to_s).to eq("${trimspace(var.thingy)}")
+      expect(interpolation.strip.to_s).to eq("${trimspace(var.thingy)}")
     end
   end
 
   it "should stack functions" do
-    out = Terrafying::Interpolation.new("var.thingy")
+    interpolation = Terrafying::Interpolation.new("var.thingy")
 
-    expect(out.downcase.strip.to_s).to eq("${trimspace(lower(var.thingy))}")
+    expect(interpolation.downcase.strip.to_s).to eq("${trimspace(lower(var.thingy))}")
   end
 
   it "should be comparable" do
@@ -63,13 +63,13 @@ end
 
 RSpec.describe Terrafying::Reference do
 
-  it "should output" do
+  it "should interpolate" do
     ref = Terrafying::Reference.new("aws_kms_key", "secret")
 
-    out = ref["arn"]
+    interpolation = ref["arn"]
 
-    expect(out).to be_a(Terrafying::Interpolation)
-    expect(out.to_s).to eq("${aws_kms_key.secret.arn}")
+    expect(interpolation).to be_a(Terrafying::Interpolation)
+    expect(interpolation.to_s).to eq("${aws_kms_key.secret.arn}")
   end
 
   it "should default to id" do
@@ -137,13 +137,53 @@ RSpec.describe Terrafying::Context do
   end
 
   context "output_of" do
-    it "should use an output" do
+    it "should use an interpolation" do
       context = Terrafying::Context.new
 
       arn = context.output_of(:aws_kms_key, "secret", "arn")
 
       expect(arn).to be_a(Terrafying::Interpolation)
       expect(arn.downcase).to eq("${lower(aws_kms_key.secret.arn)}")
+    end
+  end
+
+  context "attribute_of" do
+    it "should use an interpolation" do
+      context = Terrafying::Context.new
+
+      arn = context.attribute_of(:aws_kms_key, "secret", "arn")
+
+      expect(arn).to be_a(Terrafying::Interpolation)
+      expect(arn.downcase).to eq("${lower(aws_kms_key.secret.arn)}")
+    end
+
+    it "supports data" do
+      context = Terrafying::Context.new
+
+      arn = context.attribute_of(:aws_kms_key, "secret", "arn", kind: "data")
+
+      expect(arn).to be_a(Terrafying::Interpolation)
+      expect(arn.downcase).to eq("${lower(data.aws_kms_key.secret.arn)}")
+    end
+  end
+
+  context "id_of" do
+    it "should use an interpolation" do
+      context = Terrafying::Context.new
+
+      id = context.id_of(:aws_kms_key, "secret")
+
+      expect(id).to be_a(Terrafying::Interpolation)
+      expect(id).to eq("${aws_kms_key.secret.id}")
+    end
+
+    it "supports data" do
+      context = Terrafying::Context.new
+
+      id = context.id_of(:aws_kms_key, "secret", kind: "data")
+
+      expect(id).to be_a(Terrafying::Interpolation)
+      expect(id).to eq("${data.aws_kms_key.secret.id}")
     end
   end
 
