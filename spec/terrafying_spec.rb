@@ -12,7 +12,7 @@ RSpec.describe Terrafying::Output do
   end
 
   context "[]" do
-    it "should wrap it in lower" do
+    it "should wrap it in element with index" do
       out = Terrafying::Output.new("var.thingy")
 
       expect(out[0].to_s).to eq("${element(var.thingy,0)}")
