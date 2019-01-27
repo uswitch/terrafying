@@ -7,22 +7,22 @@ require 'terrafying/aws'
 
 module Terrafying
 
-  class Output
+  class Interpolation
 
     def initialize(var)
       @var = var
     end
 
     def downcase
-      Output.new("lower(#{@var})")
+      Interpolation.new("lower(#{@var})")
     end
 
     def strip
-      Output.new("trimspace(#{@var})")
+      Interpolation.new("trimspace(#{@var})")
     end
 
     def [](index)
-      Output.new("element(#{@var},#{index})")
+      Interpolation.new("element(#{@var},#{index})")
     end
 
     def to_s
@@ -65,9 +65,9 @@ module Terrafying
     def [](key)
       case @options[:kind]
       when "resource"
-        Terrafying::Output.new("#{@type}.#{@name}.#{key}")
+        Terrafying::Interpolation.new("#{@type}.#{@name}.#{key}")
       when "data"
-        Terrafying::Output.new("data.#{@type}.#{@name}.#{key}")
+        Terrafying::Interpolation.new("data.#{@type}.#{@name}.#{key}")
       else
         raise "Don't know what type of thing in terraform this is referencing"
       end
@@ -144,12 +144,12 @@ module Terrafying
       @children.inject(@output) { |out, c| out.deep_merge(c.output_with_children) }
     end
 
-    def id_of(type,name)
+    def id_of(type, name)
       output_of(type, name, "id")
     end
 
     def output_of(type, name, value)
-      Output.new("#{type}.#{name}.#{value}")
+      Interpolation.new("#{type}.#{name}.#{value}")
     end
 
     def pretty_generate
