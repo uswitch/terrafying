@@ -1,4 +1,3 @@
-
 require 'terrafying'
 
 RSpec.describe Terrafying::Output do

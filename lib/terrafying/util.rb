@@ -24,7 +24,7 @@ module Terrafying
         }
       end
 
-      JSON.pretty_generate(config)
+      JSON.generate(config)
     end
 
   end

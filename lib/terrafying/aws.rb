@@ -1,4 +1,9 @@
-require 'aws-sdk'
+require 'aws-sdk-autoscaling'
+require 'aws-sdk-ec2'
+require 'aws-sdk-elasticloadbalancingv2'
+require 'aws-sdk-route53'
+require 'aws-sdk-s3'
+require 'aws-sdk-sts'
 
 Aws.use_bundled_cert!
 
@@ -9,13 +14,17 @@ module Terrafying
       attr_reader :region
 
       def initialize(region)
-        full_jitter = lambda { |c| Kernel.sleep(Kernel.rand(0..[2, (0.3 * 2**c.retries)].min)) }
+        half_jitter = lambda { |c|
+          sleep_time = 0.5 * (2**c.retries)
+          Kernel.sleep(Kernel.rand((sleep_time / 2)..sleep_time))
+        }
 
         ::Aws.config.update({
           region: region,
-          retry_limit: 5,
-          retry_backoff: full_jitter
+          retry_limit: 7,
+          retry_backoff: half_jitter
         })
+
         @autoscaling_client = ::Aws::AutoScaling::Client.new
         @ec2_resource = ::Aws::EC2::Resource.new
         @ec2_client = ::Aws::EC2::Client.new
@@ -31,20 +40,33 @@ module Terrafying
         @account_id_cache ||= @sts_client.get_caller_identity.account
       end
 
+      def all_security_groups
+        @all_security_groups ||= @ec2_resource.security_groups.to_a
+      end
+
       def security_group(name)
         @security_groups ||= {}
         @security_groups[name] ||=
           begin
             STDERR.puts "Looking up id of security group '#{name}'"
-            groups = @ec2_resource.security_groups(
-              {
-                filters: [
-                  {
-                    name: "group-name",
-                    values: [name],
-                  },
-                ],
-              }).limit(2)
+            groups = all_security_groups.select { |g| g.group_name == name }.take(2)
+            case
+            when groups.count == 1
+              groups.first.id
+            when groups.count < 1
+              raise "No security group with name '#{name}' was found."
+            when groups.count > 1
+              raise "More than one security group with name '#{name}' found: " + groups.join(', ')
+            end
+          end
+      end
+
+      def security_group_in_vpc(vpc_id, name)
+        @security_groups_in_vpc ||= {}
+        @security_groups_in_vpc[vpc_id + name] ||=
+          begin
+            STDERR.puts "Looking up id of security group '#{name}'"
+            groups = all_security_groups.select { |g| g.vpc_id == vpc_id && g.group_name == name }.take(2)
             case
             when groups.count == 1
               groups.first.id
@@ -60,20 +82,7 @@ module Terrafying
         @security_groups_by_tags ||= {}
         @security_groups_by_tags[tags] ||=
           begin
-            groups = @ec2_client.describe_security_groups(
-              {
-                filters: [
-                  {
-                    name: "tag-key",
-                    values: tags.keys,
-                  },
-                  {
-                    name: "tag-value",
-                    values: tags.values
-                  }
-                ]
-              },
-            ).security_groups
+            groups = all_security_groups.select { |g| g.tags.any? { |t| t.key == tags.keys && t.value == tags.values } }.take(2)
             case
             when groups.count == 1
               groups.first.id
@@ -159,6 +168,10 @@ module Terrafying
 
       def security_groups(*names)
         names.map{|n| security_group(n)}
+      end
+
+      def security_groups_in_vpc(vpc_id, *names)
+        names.map{|n| security_group_in_vpc(vpc_id, n)}
       end
 
       def subnet(name)
@@ -339,7 +352,7 @@ module Terrafying
           begin
             STDERR.puts "looking for a hosted zone with fqdn '#{fqdn}'"
             hosted_zones = @route53_client.list_hosted_zones_by_name({ dns_name: fqdn }).hosted_zones.select { |zone|
-              zone.name == "#{fqdn}."
+              zone.name == "#{fqdn}." && !zone.config.private_zone
             }
             case
             when hosted_zones.count == 1

@@ -16,17 +16,25 @@ Gem::Specification.new do |spec|
 
   spec.bindir        = "bin"
   spec.executables   << "terrafying"
-  spec.files         = `git ls-files lib/`.split($/)
+  spec.files         = `git ls-files lib/`.split($RS)
   spec.require_paths = ["lib"]
 
-  spec.add_development_dependency "bundler", "~> 1.11"
-  spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_development_dependency 'bundler', '~> 1.11'
+  spec.add_development_dependency 'rake', '~> 10.0'
   spec.add_development_dependency 'rspec', '~> 3.7'
   spec.add_development_dependency 'rspec-mocks', '~> 3.7'
+  spec.add_development_dependency 'pry'
 
-  spec.add_runtime_dependency 'aws-sdk', '~> 2'
-  spec.add_runtime_dependency 'thor', '~> 0.19.1'
+  spec.add_runtime_dependency 'aws-sdk-autoscaling', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-core', '~> 3'
+  spec.add_runtime_dependency 'aws-sdk-dynamodb', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-ec2', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-elasticloadbalancingv2', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-route53', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-s3', '~> 1'
+
   spec.add_runtime_dependency 'deep_merge', '~> 1.1.1'
   spec.add_runtime_dependency 'netaddr', '~> 1.5'
+  spec.add_runtime_dependency 'thor', '~> 0.19.1'
   spec.add_runtime_dependency 'xxhash', '~> 0.4.0'
 end
