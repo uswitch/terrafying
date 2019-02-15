@@ -69,5 +69,8 @@ module Terrafying
       exit Config.new(path, options).import(addr, id)
     end
 
+    def method_missing(*args)
+      json(args[0].to_s)
+    end
   end
 end
