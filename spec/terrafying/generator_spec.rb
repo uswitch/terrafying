@@ -5,7 +5,7 @@ RSpec.describe Terrafying::Ref do
 
   context "to_s" do
     it "should return an interpolated string" do
-      ref = Terrafying::Ref.new("var.thingy")
+      ref = Terrafying::Ref.new(kind: :var, name: "thingy")
 
       expect(ref.to_s).to eq("${var.thingy}")
     end
@@ -13,7 +13,7 @@ RSpec.describe Terrafying::Ref do
 
   context "downcase" do
     it "should wrap it in lower" do
-      ref = Terrafying::Ref.new("var.thingy")
+      ref = Terrafying::Ref.new(kind: :var, name: "thingy")
 
       expect(ref.downcase.to_s).to eq("${lower(var.thingy)}")
     end
@@ -21,35 +21,52 @@ RSpec.describe Terrafying::Ref do
 
   context "strip" do
     it "should wrap it in trimspace" do
-      ref = Terrafying::Ref.new("var.thingy")
+      ref = Terrafying::Ref.new(kind: :var, name: "thingy")
 
       expect(ref.strip.to_s).to eq("${trimspace(var.thingy)}")
     end
   end
 
   it "should stack functions" do
-    ref = Terrafying::Ref.new("var.thingy")
+    ref = Terrafying::Ref.new(kind: :var, name: "thingy")
 
     expect(ref.downcase.strip.to_s).to eq("${trimspace(lower(var.thingy))}")
   end
 
   it "should be comparable" do
     refs = [
-      Terrafying::Ref.new("var.b"),
-      Terrafying::Ref.new("var.a"),
+      ref = Terrafying::Ref.new(kind: :var, name: "b"),
+      ref = Terrafying::Ref.new(kind: :var, name: "a"),
     ]
 
     expect(refs.sort[0].to_s).to eq("${var.a}")
   end
 
   it "implements equality" do
-    a = Terrafying::Ref.new("var.a")
-    a2 = Terrafying::Ref.new("var.a")
-    b = Terrafying::Ref.new("var.b")
+    a = Terrafying::Ref.new(kind: :var, name: "a")
+    a2 = Terrafying::Ref.new(kind: :var, name: "a")
+    b = Terrafying::Ref.new(kind: :var, name: "b")
 
     expect(a == a).to be true
     expect(a == a2).to be true
     expect(a == b).to be false
+  end
+
+  it "lets us look up a var" do
+    r = Terrafying::Ref.new(kind: :resource, type: "aws_wibble", name: "foo")
+    expect(r.to_s).to eq("${aws_wibble.foo.id}")
+    r_thing = r["thing"]
+    expect(r_thing.to_s).to eq("${aws_wibble.foo.thing}")
+    r_thing_id = r_thing["id"]
+    expect(r_thing_id.to_s).to eq("${aws_wibble.foo.thing.id}")
+  end
+
+  it "lets us look up a var when called fn" do
+    r = Terrafying::Ref.new(kind: :resource, type: "aws_wibble", name: "foo")
+    r_lower = r.downcase
+    expect(r_lower.to_s).to eq("${lower(aws_wibble.foo.id)}")
+    r_lower_wibble = r_lower["wibble"]
+    expect(r_lower_wibble.to_s).to eq("${lower(aws_wibble.foo.wibble)}")
   end
 
 end
@@ -214,6 +231,14 @@ RSpec.describe Terrafying::Context do
 
       expect("#{ref}").to eq("${lower(aws_security_group.foo.id)}")
     end
+  end
+
+  it "should bundle up some resources" do
+    ctx = Terrafying::Context.bundle {
+      resource :aws_wibble, "bibble", {}
+    }
+
+    expect(ctx.output_with_children["resource"]["aws_wibble"].count).to eq(1)
   end
 
 end

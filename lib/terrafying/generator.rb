@@ -9,20 +9,53 @@ module Terrafying
 
   class Ref
 
-    def initialize(var)
-      @var = var
+    def initialize(
+          kind: :resource,
+          type: "",
+          name:,
+          key: nil,
+          fns: []
+        )
+      @kind = kind
+      @type = type
+      @name = name
+      @key = key
+      @fns = Array(fns)
+    end
+
+    def resource?
+      @kind == :resource
+    end
+
+    def fn_call(fn)
+      Ref.new(kind: @kind, type: @type, name: @name, key: @key, fns: Array(fn) + @fns)
     end
 
     def downcase
-      Ref.new("lower(#{@var})")
+      fn_call("lower")
     end
 
     def strip
-      Ref.new("trimspace(#{@var})")
+      fn_call("trimspace")
     end
 
     def to_s
-      "${#{@var}}"
+      closing_parens = ")" * @fns.count
+      calls = @fns.reduce("") { |m, v| m << "#{v}(" }
+
+      type = @type
+      if ! resource?
+        type = [@kind.to_s, @type]
+      end
+
+      key = @key
+      if resource? && key == nil
+        key = "id"
+      end
+
+      var = [type, @name, key].flatten.compact.reject { |s| s.empty? }.join('.')
+
+      "${#{calls}#{var}#{closing_parens}}"
     end
 
     def to_str
@@ -37,6 +70,17 @@ module Terrafying
       self.to_s == other.to_s
     end
 
+    def [](key)
+      new_key = [@key, key].compact.join('.')
+
+      Ref.new(kind: @kind, type: @type, name: @name, key: new_key, fns: @fns)
+    end
+
+    def []=(k, v)
+      raise "You can't set a value this way"
+    end
+
+
   end
 
   class Context
@@ -46,6 +90,12 @@ module Terrafying
     PROVIDER_DEFAULTS = {
       aws: { region: REGION }
     }
+
+    def self.bundle(&block)
+      ctx = Context.new
+      ctx.instance_eval(&block)
+      ctx
+    end
 
     attr_reader :output
 
@@ -79,7 +129,7 @@ module Terrafying
 
       raise "Data already exists #{type.to_s}.#{name.to_s}" if @output["data"][type.to_s].has_key? name.to_s
       @output["data"][type.to_s][name.to_s] = spec
-      id_of(type, name)
+      Ref.new(kind: :data, type: type, name: name)
     end
 
     def resource(type, name, attributes)
@@ -87,7 +137,7 @@ module Terrafying
 
       raise "Resource already exists #{type.to_s}.#{name.to_s}" if @output["resource"][type.to_s].has_key? name.to_s
       @output["resource"][type.to_s][name.to_s] = attributes
-      id_of(type, name)
+      Ref.new(kind: :resource, type: type, name: name)
     end
 
     def template(relative_path, params = {})
@@ -106,8 +156,8 @@ module Terrafying
       output_of(type, name, "id")
     end
 
-    def output_of(type, name, value)
-      Ref.new("#{type}.#{name}.#{value}")
+    def output_of(type, name, key)
+      Ref.new(kind: :resource, type: type, name: name, key: key)
     end
 
     def pretty_generate
@@ -174,5 +224,26 @@ module Terrafying
   end
 
   Generator = RootContext.new
+
+  module DSL
+
+    %w[
+      add!
+      aws
+      backend
+      provider
+      resource
+      data
+      template
+      tf_safe
+      id_of
+      output_of
+    ].each { |name|
+      define_method(name) { |*args|
+        Generator.send(name, *args)
+      }
+    }
+
+  end
 
 end

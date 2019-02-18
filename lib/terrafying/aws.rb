@@ -40,6 +40,10 @@ module Terrafying
         @account_id_cache ||= @sts_client.get_caller_identity.account
       end
 
+      def all_regions
+        @all_regions ||= @ec2_client.describe_regions.regions.map(&:region_name)
+      end
+
       def all_security_groups
         @all_security_groups ||= @ec2_resource.security_groups.to_a
       end
