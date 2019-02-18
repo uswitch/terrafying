@@ -20,11 +20,15 @@ module Terrafying
       @type = type
       @name = name
       @key = key
-      @fns = fns
+      @fns = Array(fns)
+    end
+
+    def resource?
+      @kind == :resource
     end
 
     def fn_call(fn)
-      Ref.new(kind: @kind, type: @type, name: @name, key: @key, fns: [fn] + @fns)
+      Ref.new(kind: @kind, type: @type, name: @name, key: @key, fns: Array(fn) + @fns)
     end
 
     def downcase
@@ -37,22 +41,19 @@ module Terrafying
 
     def to_s
       closing_parens = ")" * @fns.count
-      calls = ""
-      if @fns.count > 0
-        calls = @fns.join("(") + "("
-      end
+      calls = @fns.reduce("") { |m, v| m << "#{v}(" }
 
       type = @type
-      if @kind != :resource
+      if ! resource?
         type = [@kind.to_s, @type]
       end
 
       key = @key
-      if @kind == :resource && key == nil
+      if resource? && key == nil
         key = "id"
       end
 
-      var = [type, @name, key].flatten.select { |s| s != nil && !s.empty? }.join(".")
+      var = [type, @name, key].flatten.compact.reject { |s| s.empty? }.join('.')
 
       "${#{calls}#{var}#{closing_parens}}"
     end
@@ -70,10 +71,7 @@ module Terrafying
     end
 
     def [](key)
-      new_key = key
-      if @key != nil
-        new_key = "#{@key}.#{key}"
-      end
+      new_key = [@key, key].compact.join('.')
 
       Ref.new(kind: @kind, type: @type, name: @name, key: new_key, fns: @fns)
     end
