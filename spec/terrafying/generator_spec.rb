@@ -233,6 +233,14 @@ RSpec.describe Terrafying::Context do
     end
   end
 
+  it "should bundle up some resources" do
+    ctx = Terrafying::Context.bundle {
+      resource :aws_wibble, "bibble", {}
+    }
+
+    expect(ctx.output_with_children["resource"]["aws_wibble"].count).to eq(1)
+  end
+
 end
 
 RSpec.describe Terrafying::RootContext do

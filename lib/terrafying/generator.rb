@@ -93,6 +93,12 @@ module Terrafying
       aws: { region: REGION }
     }
 
+    def self.bundle(&block)
+      ctx = Context.new
+      ctx.instance_eval(&block)
+      ctx
+    end
+
     attr_reader :output
 
     def initialize
