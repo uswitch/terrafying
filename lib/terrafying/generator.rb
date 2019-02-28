@@ -123,6 +123,15 @@ module Terrafying
       @providers.key?(key) && spec != @providers[key][name.to_s]
     end
 
+    def var(name, spec)
+      @output["variable"] ||= {}
+
+      raise "Var already exists #{name.to_s}" if @output["variable"].has_key? name.to_s
+
+      @output["variable"][name.to_s] = spec
+      Ref.new(kind: :var, name: name)
+    end
+
     def data(type, name, spec)
       @output["data"] ||= {}
       @output["data"][type.to_s] ||= {}

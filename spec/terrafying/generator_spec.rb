@@ -73,6 +73,28 @@ end
 
 RSpec.describe Terrafying::Context do
 
+  context "var" do
+
+    it "should output the right thing" do
+      context = Terrafying::Context.new
+
+      var = context.var :foo, { type: "string", default: "asdf" }
+
+      expect(var.to_s).to eq("${var.foo}")
+    end
+
+    it "should not be able to make two vars with same name" do
+      context = Terrafying::Context.new
+
+      context.var(:foo, {})
+      expect {
+        context.var(:foo, {})
+      }.to raise_error(/foo/)
+
+    end
+
+  end
+
   context "provider" do
 
     it "should output a string" do
