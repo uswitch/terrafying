@@ -123,6 +123,15 @@ module Terrafying
       @providers.key?(key) && spec != @providers[key][name.to_s]
     end
 
+    def local(name, value)
+      @output["locals"] ||= {}
+
+      raise "Local already exists #{name.to_s}" if @output["locals"].has_key? name.to_s
+
+      @output["locals"][name.to_s] = value
+      Ref.new(kind: :local, name: name)
+    end
+
     def var(name, spec)
       @output["variable"] ||= {}
 

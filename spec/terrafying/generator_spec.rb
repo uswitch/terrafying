@@ -95,6 +95,28 @@ RSpec.describe Terrafying::Context do
 
   end
 
+  context "local" do
+
+    it "should output the right thing" do
+      context = Terrafying::Context.new
+
+      local = context.local :foo, "wibble"
+
+      expect(local.to_s).to eq("${local.foo}")
+    end
+
+    it "should not be able to make two locals with same name" do
+      context = Terrafying::Context.new
+
+      context.local(:foo, {})
+      expect {
+        context.local(:foo, {})
+      }.to raise_error(/foo/)
+
+    end
+
+  end
+
   context "provider" do
 
     it "should output a string" do
