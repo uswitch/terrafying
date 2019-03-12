@@ -329,6 +329,8 @@ module Terrafying
     %w[
       add!
       aws
+      local
+      var
       backend
       provider
       resource
