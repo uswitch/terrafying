@@ -7,28 +7,15 @@ require 'terrafying/aws'
 
 module Terrafying
 
+  ARG_PLACEHOLDER = "ARG_PLACEHOLDER123"
+
   class Ref
 
-    def initialize(
-          kind: :resource,
-          type: "",
-          name:,
-          key: nil,
-          fns: []
-        )
-      @kind = kind
-      @type = type
-      @name = name
-      @key = key
-      @fns = Array(fns)
-    end
-
-    def resource?
-      @kind == :resource
-    end
-
-    def fn_call(fn)
-      Ref.new(kind: @kind, type: @type, name: @name, key: @key, fns: Array(fn) + @fns)
+    def fn_call(fn, *args)
+      if args.length == 0
+        args = [ARG_PLACEHOLDER]
+      end
+      FnRef.new(fn: fn, args: args, ref: self)
     end
 
     def downcase
@@ -39,23 +26,24 @@ module Terrafying
       fn_call("trimspace")
     end
 
+    def split(separator)
+      fn_call("split", separator, ARG_PLACEHOLDER)
+    end
+
+    def slice(idx, length=0)
+      if length != 0
+        fn_call("slice", ARG_PLACEHOLDER, idx, idx+length)
+      else
+        fn_call("element", ARG_PLACEHOLDER, idx)
+      end
+    end
+
+    def realise
+      ""
+    end
+
     def to_s
-      closing_parens = ")" * @fns.count
-      calls = @fns.reduce("") { |m, v| m << "#{v}(" }
-
-      type = @type
-      if ! resource?
-        type = [@kind.to_s, @type]
-      end
-
-      key = @key
-      if resource? && key == nil
-        key = "id"
-      end
-
-      var = [type, @name, key].flatten.compact.reject { |s| s.empty? }.join('.')
-
-      "${#{calls}#{var}#{closing_parens}}"
+      "${#{realise}}"
     end
 
     def to_str
@@ -71,16 +59,109 @@ module Terrafying
     end
 
     def [](key)
-      new_key = [@key, key].compact.join('.')
-
-      Ref.new(kind: @kind, type: @type, name: @name, key: new_key, fns: @fns)
+      if key.is_a? Numeric
+        IndexRef.new(ref: self, idx: key)
+      else
+        AttributeRef.new(ref: self, key: key)
+      end
     end
 
     def []=(k, v)
       raise "You can't set a value this way"
     end
 
+  end
 
+  class RootRef < Ref
+    def initialize(
+          kind: :resource,
+          type: "",
+          name:
+        )
+      @kind = kind
+      @type = type
+      @name = name
+    end
+
+    def realise
+      type = [@type]
+      if @kind != :resource
+        type = [@kind, @type]
+      end
+
+      (type + [@name]).reject(&:empty?).join(".")
+    end
+
+    def fn_call(fn, *args)
+      if @kind == :resource
+        self["id"].fn_call(fn, *args)
+      else
+        super
+      end
+    end
+
+    def to_s
+      if @kind == :resource
+        "${#{realise}.id}"
+      else
+        super
+      end
+    end
+  end
+
+  class AttributeRef < Ref
+    def initialize(
+          ref:,
+          key:
+        )
+      @ref = ref
+      @key = key
+    end
+
+    def realise
+      "#{@ref.realise}.#{@key}"
+    end
+  end
+
+  class IndexRef < Ref
+    def initialize(
+          ref:,
+          idx:
+        )
+      @ref = ref
+      @idx = idx
+    end
+
+    def realise
+      "#{@ref.realise}[#{@idx}]"
+    end
+  end
+
+  class FnRef < Ref
+    def initialize(
+          ref:,
+          fn:,
+          args: []
+        )
+      @ref = ref
+      @fn = fn
+      @args = args
+    end
+
+    def realise
+      ref = @ref.realise
+      args = @args.map { |arg|
+        if arg == ARG_PLACEHOLDER
+          ref
+        elsif arg.is_a? String
+          "\"#{arg}\""
+        else
+          arg
+        end
+      }.join(", ")
+
+      "#{@fn}(#{args})"
+    end
   end
 
   class Context
@@ -129,7 +210,7 @@ module Terrafying
       raise "Local already exists #{name.to_s}" if @output["locals"].has_key? name.to_s
 
       @output["locals"][name.to_s] = value
-      Ref.new(kind: :local, name: name)
+      RootRef.new(kind: :local, name: name)
     end
 
     def var(name, spec)
@@ -138,7 +219,7 @@ module Terrafying
       raise "Var already exists #{name.to_s}" if @output["variable"].has_key? name.to_s
 
       @output["variable"][name.to_s] = spec
-      Ref.new(kind: :var, name: name)
+      RootRef.new(kind: :var, name: name)
     end
 
     def data(type, name, spec)
@@ -147,7 +228,7 @@ module Terrafying
 
       raise "Data already exists #{type.to_s}.#{name.to_s}" if @output["data"][type.to_s].has_key? name.to_s
       @output["data"][type.to_s][name.to_s] = spec
-      Ref.new(kind: :data, type: type, name: name)
+      RootRef.new(kind: :data, type: type, name: name)
     end
 
     def resource(type, name, attributes)
@@ -155,7 +236,7 @@ module Terrafying
 
       raise "Resource already exists #{type.to_s}.#{name.to_s}" if @output["resource"][type.to_s].has_key? name.to_s
       @output["resource"][type.to_s][name.to_s] = attributes
-      Ref.new(kind: :resource, type: type, name: name)
+      RootRef.new(kind: :resource, type: type, name: name)
     end
 
     def template(relative_path, params = {})
@@ -175,7 +256,7 @@ module Terrafying
     end
 
     def output_of(type, name, key)
-      Ref.new(kind: :resource, type: type, name: name, key: key)
+      RootRef.new(kind: :resource, type: type, name: name)[key]
     end
 
     def pretty_generate
@@ -248,6 +329,8 @@ module Terrafying
     %w[
       add!
       aws
+      local
+      var
       backend
       provider
       resource

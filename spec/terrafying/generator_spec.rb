@@ -5,7 +5,7 @@ RSpec.describe Terrafying::Ref do
 
   context "to_s" do
     it "should return an interpolated string" do
-      ref = Terrafying::Ref.new(kind: :var, name: "thingy")
+      ref = Terrafying::RootRef.new(kind: :var, name: "thingy")
 
       expect(ref.to_s).to eq("${var.thingy}")
     end
@@ -13,7 +13,7 @@ RSpec.describe Terrafying::Ref do
 
   context "downcase" do
     it "should wrap it in lower" do
-      ref = Terrafying::Ref.new(kind: :var, name: "thingy")
+      ref = Terrafying::RootRef.new(kind: :var, name: "thingy")
 
       expect(ref.downcase.to_s).to eq("${lower(var.thingy)}")
     end
@@ -21,31 +21,62 @@ RSpec.describe Terrafying::Ref do
 
   context "strip" do
     it "should wrap it in trimspace" do
-      ref = Terrafying::Ref.new(kind: :var, name: "thingy")
+      ref = Terrafying::RootRef.new(kind: :var, name: "thingy")
 
       expect(ref.strip.to_s).to eq("${trimspace(var.thingy)}")
     end
   end
 
+  context "split" do
+    it "should wrap correctly" do
+      ref = Terrafying::RootRef.new(kind: :var, name: "thingy")
+      expect(ref.split("/").to_s).to eq('${split("/", var.thingy)}')
+    end
+
+    it "should stack correctly" do
+      ref = Terrafying::RootRef.new(kind: :var, name: "thingy")
+      expect(ref.split("/")[0].downcase.to_s).to eq('${lower(split("/", var.thingy)[0])}')
+    end
+  end
+
+  context "slice" do
+    it "should call element by default" do
+      ref = Terrafying::RootRef.new(kind: :var, name: "thingy")
+      expect(ref.slice(1).to_s).to eq("${element(var.thingy, 1)}")
+    end
+
+    it "should call slice when length is non-zero" do
+      ref = Terrafying::RootRef.new(kind: :var, name: "thingy")
+      expect(ref.slice(1, 2).to_s).to eq("${slice(var.thingy, 1, 3)}")
+    end
+  end
+
+  context "lookup" do
+    it "should do numbers and strings" do
+      ref = Terrafying::RootRef.new(kind: :var, name: "list")
+      expect(ref[0]["name"].to_s).to eq('${var.list[0].name}')
+    end
+  end
+
   it "should stack functions" do
-    ref = Terrafying::Ref.new(kind: :var, name: "thingy")
+    ref = Terrafying::RootRef.new(kind: :var, name: "thingy")
 
     expect(ref.downcase.strip.to_s).to eq("${trimspace(lower(var.thingy))}")
   end
 
   it "should be comparable" do
     refs = [
-      ref = Terrafying::Ref.new(kind: :var, name: "b"),
-      ref = Terrafying::Ref.new(kind: :var, name: "a"),
+      ref = Terrafying::RootRef.new(kind: :var, name: "b"),
+      ref = Terrafying::RootRef.new(kind: :var, name: "a"),
     ]
 
     expect(refs.sort[0].to_s).to eq("${var.a}")
   end
 
   it "implements equality" do
-    a = Terrafying::Ref.new(kind: :var, name: "a")
-    a2 = Terrafying::Ref.new(kind: :var, name: "a")
-    b = Terrafying::Ref.new(kind: :var, name: "b")
+    a = Terrafying::RootRef.new(kind: :var, name: "a")
+    a2 = Terrafying::RootRef.new(kind: :var, name: "a")
+    b = Terrafying::RootRef.new(kind: :var, name: "b")
 
     expect(a == a).to be true
     expect(a == a2).to be true
@@ -53,7 +84,7 @@ RSpec.describe Terrafying::Ref do
   end
 
   it "lets us look up a var" do
-    r = Terrafying::Ref.new(kind: :resource, type: "aws_wibble", name: "foo")
+    r = Terrafying::RootRef.new(kind: :resource, type: "aws_wibble", name: "foo")
     expect(r.to_s).to eq("${aws_wibble.foo.id}")
     r_thing = r["thing"]
     expect(r_thing.to_s).to eq("${aws_wibble.foo.thing}")
@@ -62,10 +93,10 @@ RSpec.describe Terrafying::Ref do
   end
 
   it "lets us look up a var when called fn" do
-    r = Terrafying::Ref.new(kind: :resource, type: "aws_wibble", name: "foo")
+    r = Terrafying::RootRef.new(kind: :resource, type: "aws_wibble", name: "foo")
     r_lower = r.downcase
     expect(r_lower.to_s).to eq("${lower(aws_wibble.foo.id)}")
-    r_lower_wibble = r_lower["wibble"]
+    r_lower_wibble = r["wibble"].downcase
     expect(r_lower_wibble.to_s).to eq("${lower(aws_wibble.foo.wibble)}")
   end
 
