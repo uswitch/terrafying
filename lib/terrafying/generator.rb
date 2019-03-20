@@ -192,12 +192,16 @@ module Terrafying
     end
 
     def provider(name, spec)
-      key = [name, spec[:alias]].compact.join('.')
+      key = provider_key(name, spec)
       @providers ||= {}
       raise "Duplicate provider configuration detected for #{key}" if key_exists_spec_differs(key, name, spec)
       @providers[key] = { name.to_s => spec }
       @output['provider'] = @providers.values
       key
+    end
+
+    def provider_key(name, spec)
+      [name, spec[:alias]].compact.join('.')
     end
 
     def key_exists_spec_differs(key, name, spec)
@@ -300,8 +304,7 @@ module Terrafying
 
     def initialize
       super
-
-      PROVIDER_DEFAULTS.each { |name, spec| provider(name, spec) }
+      @providers = {}
     end
 
     def backend(name, spec)
@@ -318,6 +321,17 @@ module Terrafying
 
     def method_missing(fn, *args)
       resource(fn, args.shift.to_s, args.first)
+    end
+
+    def output_with_children
+
+      PROVIDER_DEFAULTS.each { |name, spec|
+        if not key_exists_spec_differs(provider_key(name, spec), name, spec)
+          provider(name, spec)
+        end
+      }
+
+      super
     end
 
   end

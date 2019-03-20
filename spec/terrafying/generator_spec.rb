@@ -319,8 +319,21 @@ RSpec.describe Terrafying::Context do
 end
 
 RSpec.describe Terrafying::RootContext do
-  context('initialise') do
-    it 'should add the default aws provider' do
+
+  context "default providers" do
+    it "should let you override default providers" do
+      context = Terrafying::RootContext.new
+
+      context.provider("aws", { region: "wibble-1" })
+
+      providers = context.output_with_children['provider']
+
+      expect(providers).to include(
+        a_hash_including('aws' => { region: 'wibble-1' })
+      )
+    end
+
+    it "should add default ones" do
       context = Terrafying::RootContext.new
 
       providers = context.output_with_children['provider']
