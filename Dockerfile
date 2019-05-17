@@ -2,7 +2,7 @@ FROM ruby:2.4-alpine3.7
 
 ARG TERRAFYING_VERSION=0.0.0
 
-RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/0.11.7/terraform_0.11.7_linux_amd64.zip \
+RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/0.11.14/terraform_0.11.14_linux_amd64.zip \
  && unzip terraform.zip \
  && install -m 755 terraform /usr/bin/terraform \
  && install -d ${HOME}/.terraform.d/plugins/linux_amd64 \
