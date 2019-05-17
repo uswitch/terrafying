@@ -6,6 +6,8 @@ require 'aws-sdk-elasticloadbalancingv2'
 require 'aws-sdk-route53'
 require 'aws-sdk-s3'
 require 'aws-sdk-sts'
+require 'aws-sdk-pricing'
+require 'json'
 
 Aws.use_bundled_cert!
 
@@ -33,6 +35,7 @@ module Terrafying
         @route53_client = ::Aws::Route53::Client.new
         @s3_client = ::Aws::S3::Client.new
         @sts_client = ::Aws::STS::Client.new
+        @pricing_client = ::Aws::Pricing::Client.new(region: 'us-east-1') # no AWS Pricing endpoint in Europe
 
         @region = region
       end
@@ -486,6 +489,39 @@ module Terrafying
         end
 
         asgs
+      end
+
+      def products(products_filter, _region = 'us-east-1')
+        next_token = nil
+        Enumerator.new do |y|
+          loop do
+            resp = @pricing_client.get_products(products_filter.merge(next_token: next_token))
+            resp.price_list.each do |product|
+              y << product
+            end
+            next_token = resp.next_token
+            break if next_token.nil?
+          end
+        end
+      end
+
+      def instance_type_vcpu_count(instance_type, location = 'EU (Ireland)')
+        products_filter = {
+          service_code: 'AmazonEC2',
+          filters: [
+            { field: 'operatingSystem', type: 'TERM_MATCH', value: 'Linux' },
+            { field: 'tenancy', type: 'TERM_MATCH', value: 'Shared' },
+            { field: 'instanceType', type: 'TERM_MATCH', value: instance_type },
+            { field: 'location', type: 'TERM_MATCH', value: location },
+            { field: 'preInstalledSw', type: 'TERM_MATCH', value: 'NA' }
+          ],
+          format_version: 'aws_v1'
+        }
+
+        products(products_filter).each do |product|
+          vcpu = JSON.parse(product)['product']['attributes']['vcpu']
+          return vcpu.to_i if vcpu
+        end
       end
     end
   end
