@@ -1,29 +1,30 @@
-# coding: utf-8
-lib = File.expand_path('../lib', __FILE__)
+# frozen_string_literal: true
+
+lib = File.expand_path('lib', __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'terrafying/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "terrafying"
+  spec.name          = 'terrafying'
   spec.version       = Terrafying::VERSION
-  spec.authors       = ["uSwitch Limited"]
-  spec.email         = ["developers@uswitch.com"]
-  spec.license       = "Apache-2.0"
+  spec.authors       = ['uSwitch Limited']
+  spec.email         = ['developers@uswitch.com']
+  spec.license       = 'Apache-2.0'
 
-  spec.summary       = %q{No.}
-  spec.description   = %q{No.}
-  spec.homepage      = "https://github.com/uswitch/terrafying"
+  spec.summary       = 'No.'
+  spec.description   = 'No.'
+  spec.homepage      = 'https://github.com/uswitch/terrafying'
 
-  spec.bindir        = "bin"
-  spec.executables   << "terrafying"
-  spec.files         = Dir.glob("lib/**/*")
-  spec.require_paths = ["lib"]
+  spec.bindir        = 'bin'
+  spec.executables << 'terrafying'
+  spec.files         = Dir.glob('lib/**/*')
+  spec.require_paths = ['lib']
 
   spec.add_development_dependency 'bundler', '~> 1.11'
+  spec.add_development_dependency 'pry'
   spec.add_development_dependency 'rake', '~> 10.0'
   spec.add_development_dependency 'rspec', '~> 3.7'
   spec.add_development_dependency 'rspec-mocks', '~> 3.7'
-  spec.add_development_dependency 'pry'
 
   spec.add_runtime_dependency 'aws-sdk-autoscaling', '~> 1'
   spec.add_runtime_dependency 'aws-sdk-core', '~> 3'

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'fileutils'
 require 'logger'
 require 'pathname'
@@ -12,9 +14,7 @@ require 'terrafying/version'
 require 'terrafying/state'
 
 module Terrafying
-
   class Config
-
     attr_reader :path, :scope
 
     def initialize(path, options)
@@ -22,7 +22,7 @@ module Terrafying
       @options = options
       @scope = options[:scope] || scope_for_path(@path)
 
-      $stderr.puts "Scope: #{@scope}"
+      warn "Scope: #{@scope}"
 
       load(path)
     end
@@ -97,9 +97,7 @@ module Terrafying
       with_lock do
         local = State.local(self)
         state = local.get
-        if state
-          State.remote(self).put(state)
-        end
+        State.remote(self).put(state) if state
         local.delete
       end
     end
@@ -108,9 +106,7 @@ module Terrafying
       with_lock do
         remote = State.remote(self)
         state = remote.get
-        if state
-          State.local(self).put(state)
-        end
+        State.local(self).put(state) if state
       end
     end
 
@@ -127,6 +123,7 @@ module Terrafying
     end
 
     private
+
     def lock_timeout
       "-lock-timeout=#{@options[:lock_timeout]}" if @options[:lock_timeout]
     end
@@ -144,24 +141,22 @@ module Terrafying
     end
 
     def with_config(&block)
-      abort("***** ERROR: You must have terraform installed to run this gem *****") unless terraform_installed?
+      abort('***** ERROR: You must have terraform installed to run this gem *****') unless terraform_installed?
       check_version
-      name = File.basename(@path, ".*")
+      name = File.basename(@path, '.*')
       dir = File.join(git_toplevel, 'tmp', SecureRandom.uuid)
-      terraform_files = File.join(git_toplevel, ".terraform/")
-      unless Dir.exists?(terraform_files)
+      terraform_files = File.join(git_toplevel, '.terraform/')
+      unless Dir.exist?(terraform_files)
         abort("***** ERROR: No .terraform directory found. Please run 'terraform init' to install plugins *****")
       end
       FileUtils.mkdir_p(dir)
-      output_path = File.join(dir, name + ".tf.json")
+      output_path = File.join(dir, name + '.tf.json')
       FileUtils.cp_r(terraform_files, dir)
       Dir.chdir(dir) do
-        begin
-          File.write(output_path, Terrafying::Generator.pretty_generate)
-          yield block
-        ensure
-          FileUtils.rm_rf(dir) unless @options[:keep]
-        end
+        File.write(output_path, Terrafying::Generator.pretty_generate)
+        yield block
+      ensure
+        FileUtils.rm_rf(dir) unless @options[:keep]
       end
     end
 
@@ -191,31 +186,27 @@ module Terrafying
     end
 
     def with_state(opts, &block)
-      if !@options[:dynamodb]
-        return yield(block)
-      end
+      return yield(block) unless @options[:dynamodb]
 
       store = State.store(self)
 
       begin
         state = store.get
         File.write(State::STATE_FILENAME, state) if state
-      rescue => e
+      rescue StandardError => e
         raise "Error retrieving state for config #{self}: #{e}"
       end
 
       yield block
 
       begin
-        if opts[:mode] == :update
-          store.put(IO.read(State::STATE_FILENAME))
-        end
-      rescue => e
+        store.put(IO.read(State::STATE_FILENAME)) if opts[:mode] == :update
+      rescue StandardError => e
         raise "Error updating state for config #{self}: #{e}"
       end
     end
 
-    def scope_for_path(path)
+    def scope_for_path(_path)
       top_level_path = Pathname.new(git_toplevel)
       Pathname.new(@path).relative_path_from(top_level_path).to_s
     end
@@ -224,6 +215,7 @@ module Terrafying
       @top_level ||= begin
                        top_level = `git rev-parse --show-toplevel`
                        raise "Unable to find .git directory top level for '#{@path}'" if top_level.empty?
+
                        File.expand_path(top_level.chomp)
                      end
     end
@@ -239,16 +231,16 @@ module Terrafying
     end
 
     def terraform_version
-      `terraform -v`.split("\n").first.split("v").last
+      `terraform -v`.split("\n").first.split('v').last
     end
 
     def stream_command(cmd)
       IO.popen(cmd) do |io|
-        while (line = io.gets) do
-          puts line.gsub('\n', "\n").gsub('\\"', "\"")
+        while (line = io.gets)
+          puts line.gsub('\n', "\n").gsub('\\"', '"')
         end
       end
-      return $?.exitstatus
+      $CHILD_STATUS.exitstatus
     end
 
     # Cross-platform way of finding an executable in the $PATH.
@@ -257,12 +249,12 @@ module Terrafying
     def which(cmd)
       exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(';') : ['']
       ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
-        exts.each { |ext|
+        exts.each do |ext|
           exe = File.join(path, "#{cmd}#{ext}")
           return exe if File.executable?(exe) && !File.directory?(exe)
-        }
+        end
       end
-      return nil
+      nil
     end
   end
 end

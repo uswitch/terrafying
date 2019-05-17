@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'aws-sdk-dynamodb'
 require 'json'
 require 'securerandom'
@@ -9,7 +11,7 @@ class ::Aws::DynamoDB::Client
     begin
       yield block
     rescue ::Aws::DynamoDB::Errors::ResourceNotFoundException => e
-      if not retried
+      if !retried
         create_table(table_spec)
         retry
       else
@@ -22,10 +24,10 @@ end
 module Terrafying
   module DynamoDb
     def self.client
-      @@client ||= ::Aws::DynamoDB::Client.new({
-        region: Terrafying::Context::REGION,
-        #endpoint: 'http://localhost:8000',
-      })
+      @@client ||= ::Aws::DynamoDB::Client.new(
+        region: Terrafying::Context::REGION
+        # endpoint: 'http://localhost:8000',
+      )
     end
   end
 end
