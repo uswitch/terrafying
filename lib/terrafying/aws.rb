@@ -1,16 +1,19 @@
+# frozen_string_literal: true
+
 require 'aws-sdk-autoscaling'
 require 'aws-sdk-ec2'
 require 'aws-sdk-elasticloadbalancingv2'
 require 'aws-sdk-route53'
 require 'aws-sdk-s3'
 require 'aws-sdk-sts'
+require 'aws-sdk-pricing'
+require 'json'
 
 Aws.use_bundled_cert!
 
 module Terrafying
   module Aws
     class Ops
-
       attr_reader :region
 
       def initialize(region)
@@ -19,11 +22,11 @@ module Terrafying
           Kernel.sleep(Kernel.rand((sleep_time / 2)..sleep_time))
         }
 
-        ::Aws.config.update({
+        ::Aws.config.update(
           region: region,
           retry_limit: 7,
           retry_backoff: half_jitter
-        })
+        )
 
         @autoscaling_client = ::Aws::AutoScaling::Client.new
         @ec2_resource = ::Aws::EC2::Resource.new
@@ -32,6 +35,7 @@ module Terrafying
         @route53_client = ::Aws::Route53::Client.new
         @s3_client = ::Aws::S3::Client.new
         @sts_client = ::Aws::STS::Client.new
+        @pricing_client = ::Aws::Pricing::Client.new(region: 'us-east-1') # no AWS Pricing endpoint in Europe
 
         @region = region
       end
@@ -52,14 +56,13 @@ module Terrafying
         @security_groups ||= {}
         @security_groups[name] ||=
           begin
-            STDERR.puts "Looking up id of security group '#{name}'"
+            warn "Looking up id of security group '#{name}'"
             groups = all_security_groups.select { |g| g.group_name == name }.take(2)
-            case
-            when groups.count == 1
+            if groups.count == 1
               groups.first.id
-            when groups.count < 1
+            elsif groups.count < 1
               raise "No security group with name '#{name}' was found."
-            when groups.count > 1
+            elsif groups.count > 1
               raise "More than one security group with name '#{name}' found: " + groups.join(', ')
             end
           end
@@ -69,14 +72,13 @@ module Terrafying
         @security_groups_in_vpc ||= {}
         @security_groups_in_vpc[vpc_id + name] ||=
           begin
-            STDERR.puts "Looking up id of security group '#{name}'"
+            warn "Looking up id of security group '#{name}'"
             groups = all_security_groups.select { |g| g.vpc_id == vpc_id && g.group_name == name }.take(2)
-            case
-            when groups.count == 1
+            if groups.count == 1
               groups.first.id
-            when groups.count < 1
+            elsif groups.count < 1
               raise "No security group with name '#{name}' was found."
-            when groups.count > 1
+            elsif groups.count > 1
               raise "More than one security group with name '#{name}' found: " + groups.join(', ')
             end
           end
@@ -87,12 +89,11 @@ module Terrafying
         @security_groups_by_tags[tags] ||=
           begin
             groups = all_security_groups.select { |g| g.tags.any? { |t| t.key == tags.keys && t.value == tags.values } }.take(2)
-            case
-            when groups.count == 1
+            if groups.count == 1
               groups.first.id
-            when groups.count < 1
+            elsif groups.count < 1
               raise "No security group with tags '#{tags}' was found."
-            when groups.count > 1
+            elsif groups.count > 1
               raise "More than one security group with tags '#{tags}' found: " + groups.join(', ')
             end
           end
@@ -103,19 +104,18 @@ module Terrafying
         @instance_profiles[name] ||=
           begin
             resource = ::Aws::IAM::Resource.new
-            STDERR.puts "Looking up id of instance profile '#{name}'"
+            warn "Looking up id of instance profile '#{name}'"
             # unfortunately amazon don't let us filter for profiles using
             # a name filter, for now we have enumerate and filter manually
             coll = resource.instance_profiles
             profiles = []
-            profiles = coll.select {|p| p.instance_profile_name =~ /#{name}/}
+            profiles = coll.select { |p| p.instance_profile_name =~ /#{name}/ }
 
-            case
-            when profiles.count == 1
+            if profiles.count == 1
               profiles.first.instance_profile_id
-            when profiles.count < 1
+            elsif profiles.count < 1
               raise "No instance profile with name '#{name}' was found."
-            when profiles.count > 1
+            elsif profiles.count > 1
               raise "More than one instance profile with name '#{name}' found: " + profiles.join(', ')
             end
           end
@@ -126,20 +126,18 @@ module Terrafying
         @route_table_for_subnet[subnet_id] ||=
           begin
             resp = @ec2_client.describe_route_tables(
-              {
-                filters: [
-                  { name: "association.subnet-id", values: [ subnet_id ] },
-                ],
-              })
+              filters: [
+                { name: 'association.subnet-id', values: [subnet_id] }
+              ]
+            )
 
             route_tables = resp.route_tables
 
-            case
-            when route_tables.count == 1
+            if route_tables.count == 1
               route_tables.first
-            when route_tables.count < 1
+            elsif route_tables.count < 1
               raise "No route table for subnet '#{subnet_id}' was found."
-            when profiles.count > 1
+            elsif profiles.count > 1
               raise "More than route table for subnet '#{subnet_id}' found: " + route_tables.join(', ')
             end
           end
@@ -150,54 +148,50 @@ module Terrafying
         @route_table_for_vpc[vpc_id] ||=
           begin
             resp = @ec2_client.describe_route_tables(
-              {
-                filters: [
-                  { name: "association.main", values: [ "true" ] },
-                  { name: "vpc-id", values: [ vpc_id ] },
-                ],
-              })
+              filters: [
+                { name: 'association.main', values: ['true'] },
+                { name: 'vpc-id', values: [vpc_id] }
+              ]
+            )
 
             route_tables = resp.route_tables
 
-            case
-            when route_tables.count == 1
+            if route_tables.count == 1
               route_tables.first
-            when route_tables.count < 1
+            elsif route_tables.count < 1
               raise "No route table for vpc '#{vpc_id}' was found."
-            when profiles.count > 1
+            elsif profiles.count > 1
               raise "More than route table for vpc '#{vpc_id}' found: " + route_tables.join(', ')
             end
           end
       end
 
       def security_groups(*names)
-        names.map{|n| security_group(n)}
+        names.map { |n| security_group(n) }
       end
 
       def security_groups_in_vpc(vpc_id, *names)
-        names.map{|n| security_group_in_vpc(vpc_id, n)}
+        names.map { |n| security_group_in_vpc(vpc_id, n) }
       end
 
       def subnet(name)
         @subnets ||= {}
         @subnets[name] ||=
           begin
-            STDERR.puts "Looking up id of subnet '#{name}'"
+            warn "Looking up id of subnet '#{name}'"
             subnets = @ec2_resource.subnets(
-              {
-                filters: [
-                  {
-                    name: "tag:Name",
-                    values: [name],
-                  },
-                ],
-              }).limit(2)
-            case
-            when subnets.count == 1
+              filters: [
+                {
+                  name: 'tag:Name',
+                  values: [name]
+                }
+              ]
+            ).limit(2)
+            if subnets.count == 1
               subnets.first.id
-            when subnets.count < 1
+            elsif subnets.count < 1
               raise "No subnet with name '#{name}' was found."
-            when subnets.count > 1
+            elsif subnets.count > 1
               raise "More than one subnet with this name '#{name}' found : " + subnets.join(', ')
             end
           end
@@ -208,23 +202,21 @@ module Terrafying
         @subnets_by_id[id] ||=
           begin
             resp = @ec2_client.describe_subnets(
-              {
-                subnet_ids: [id],
-              })
+              subnet_ids: [id]
+            )
             subnets = resp.subnets
-            case
-            when subnets.count == 1
+            if subnets.count == 1
               subnets.first
-            when subnets.count < 1
+            elsif subnets.count < 1
               raise "No subnet with id '#{id}' was found."
-            when subnets.count > 1
+            elsif subnets.count > 1
               raise "More than one subnet with this id '#{id}' found : " + subnets.join(', ')
             end
           end
       end
 
       def subnets(*names)
-        names.map{|n| subnet(n)}
+        names.map { |n| subnet(n) }
       end
 
       def subnets_for_vpc(vpc_id)
@@ -232,48 +224,42 @@ module Terrafying
         @subnets_for_vpc[vpc_id] ||=
           begin
             resp = @ec2_client.describe_subnets(
-              {
-                filters: [
-                  { name: "vpc-id", values: [ vpc_id ] },
-                ],
-              })
+              filters: [
+                { name: 'vpc-id', values: [vpc_id] }
+              ]
+            )
 
             subnets = resp.subnets
 
-            case
-            when subnets.count >= 1
+            if subnets.count >= 1
               subnets
-            when subnets.count < 1
+            elsif subnets.count < 1
               raise "No subnets found for '#{vpc_id}'."
             end
           end
       end
 
-      def ami(name, owners=["self"])
+      def ami(name, owners = ['self'])
         @ami ||= {}
         @ami[name] ||=
           begin
-            STDERR.puts "looking for an image with prefix '#{name}'"
-            resp = @ec2_client.describe_images({owners: owners})
-            if resp.images.count < 1
-              raise "no images were found"
-            end
+            warn "looking for an image with prefix '#{name}'"
+            resp = @ec2_client.describe_images(owners: owners)
+            raise 'no images were found' if resp.images.count < 1
+
             m = resp.images.select { |a| /^#{name}/.match(a.name) }
-            if m.count == 0
-              raise "no image with name '#{name}' was found"
-            end
-            m.sort { |x,y| y.creation_date <=> x.creation_date }.shift.image_id
+            raise "no image with name '#{name}' was found" if m.count == 0
+
+            m.sort { |x, y| y.creation_date <=> x.creation_date }.shift.image_id
           end
       end
 
       def availability_zones
         @availability_zones ||=
           begin
-            STDERR.puts "looking for AZs in the current region"
+            warn 'looking for AZs in the current region'
             resp = @ec2_client.describe_availability_zones({})
-            resp.availability_zones.map { |zone|
-              zone.zone_name
-            }
+            resp.availability_zones.map(&:zone_name)
           end
       end
 
@@ -281,18 +267,17 @@ module Terrafying
         @vpcs ||= {}
         @vpcs[name] ||=
           begin
-            STDERR.puts "looking for a VPC with name '#{name}'"
+            warn "looking for a VPC with name '#{name}'"
             resp = @ec2_client.describe_vpcs({})
-            matching_vpcs = resp.vpcs.select { |vpc|
-              name_tag = vpc.tags.select { |tag| tag.key == "Name" }.first
+            matching_vpcs = resp.vpcs.select do |vpc|
+              name_tag = vpc.tags.select { |tag| tag.key == 'Name' }.first
               name_tag && name_tag.value == name
-            }
-            case
-            when matching_vpcs.count == 1
+            end
+            if matching_vpcs.count == 1
               matching_vpcs.first
-            when matching_vpcs.count < 1
+            elsif matching_vpcs.count < 1
               raise "No VPC with name '#{name}' was found."
-            when matching_vpcs.count > 1
+            elsif matching_vpcs.count > 1
               raise "More than one VPC with name '#{name}' was found: " + matching_vpcs.join(', ')
             end
           end
@@ -302,23 +287,20 @@ module Terrafying
         @route_tables ||= {}
         @route_tables[name] ||=
           begin
-            STDERR.puts "looking for a route table with name '#{name}'"
+            warn "looking for a route table with name '#{name}'"
             route_tables = @ec2_client.describe_route_tables(
-              {
-                filters: [
-                  {
-                    name: "tag:Name",
-                    values: [name],
-                  },
-                ],
-              }
+              filters: [
+                {
+                  name: 'tag:Name',
+                  values: [name]
+                }
+              ]
             ).route_tables
-            case
-            when route_tables.count == 1
+            if route_tables.count == 1
               route_tables.first.route_table_id
-            when route_tables.count < 1
+            elsif route_tables.count < 1
               raise "No route table with name '#{name}' was found."
-            when route_tables.count > 1
+            elsif route_tables.count > 1
               raise "More than one route table with name '#{name}' was found: " + route_tables.join(', ')
             end
           end
@@ -328,23 +310,20 @@ module Terrafying
         @ips ||= {}
         @ips[alloc_id] ||=
           begin
-            STDERR.puts "looking for an elastic ip with allocation_id '#{alloc_id}'"
+            warn "looking for an elastic ip with allocation_id '#{alloc_id}'"
             ips = @ec2_client.describe_addresses(
-              {
-                filters: [
-                  {
-                    name: "allocation-id",
-                    values: [alloc_id],
-                  },
-                ],
-              }
+              filters: [
+                {
+                  name: 'allocation-id',
+                  values: [alloc_id]
+                }
+              ]
             ).addresses
-            case
-            when ips.count == 1
+            if ips.count == 1
               ips.first
-            when ips.count < 1
+            elsif ips.count < 1
               raise "No elastic ip with allocation_id '#{alloc_id}' was found."
-            when ips.count > 1
+            elsif ips.count > 1
               raise "More than one elastic ip with allocation_id '#{alloc_id}' was found: " + ips.join(', ')
             end
           end
@@ -354,16 +333,15 @@ module Terrafying
         @hosted_zones ||= {}
         @hosted_zones[fqdn] ||=
           begin
-            STDERR.puts "looking for a hosted zone with fqdn '#{fqdn}'"
-            hosted_zones = @route53_client.list_hosted_zones_by_name({ dns_name: fqdn }).hosted_zones.select { |zone|
+            warn "looking for a hosted zone with fqdn '#{fqdn}'"
+            hosted_zones = @route53_client.list_hosted_zones_by_name(dns_name: fqdn).hosted_zones.select do |zone|
               zone.name == "#{fqdn}." && !zone.config.private_zone
-            }
-            case
-            when hosted_zones.count == 1
+            end
+            if hosted_zones.count == 1
               hosted_zones.first
-            when hosted_zones.count < 1
+            elsif hosted_zones.count < 1
               raise "No hosted zone with fqdn '#{fqdn}' was found."
-            when hosted_zones.count > 1
+            elsif hosted_zones.count > 1
               raise "More than one hosted zone with name '#{fqdn}' was found: " + hosted_zones.join(', ')
             end
           end
@@ -373,11 +351,11 @@ module Terrafying
         @hosted_zones ||= {}
         @hosted_zones[tag] ||=
           begin
-            STDERR.puts "looking for a hosted zone with tag '#{tag}'"
+            warn "looking for a hosted zone with tag '#{tag}'"
             @aws_hosted_zones ||= @route53_client.list_hosted_zones.hosted_zones.map do |zone|
               {
                 zone: zone,
-                tags: @route53_client.list_tags_for_resource({resource_type: "hostedzone", resource_id: zone.id.split('/')[2]}).resource_tag_set.tags
+                tags: @route53_client.list_tags_for_resource(resource_type: 'hostedzone', resource_id: zone.id.split('/')[2]).resource_tag_set.tags
               }
             end
 
@@ -387,12 +365,11 @@ module Terrafying
               end
             end
 
-            case
-            when hosted_zones.count == 1
+            if hosted_zones.count == 1
               hosted_zones.first[:zone]
-            when hosted_zones.count < 1
+            elsif hosted_zones.count < 1
               raise "No hosted zone with tag '#{tag}' was found."
-            when hosted_zones.count > 1
+            elsif hosted_zones.count > 1
               raise "More than one hosted zone with tag '#{tag}' was found: " + hosted_zones.join(', ')
             end
           end
@@ -402,7 +379,7 @@ module Terrafying
         @s3_objects ||= {}
         @s3_objects["#{bucket}-#{key}"] ||=
           begin
-            resp = @s3_client.get_object({ bucket: bucket, key: key })
+            resp = @s3_client.get_object(bucket: bucket, key: key)
             resp.body.read
           end
       end
@@ -411,7 +388,7 @@ module Terrafying
         @list_objects ||= {}
         @list_objects[bucket] ||=
           begin
-            resp = @s3_client.list_objects_v2({ bucket: bucket })
+            resp = @s3_client.list_objects_v2(bucket: bucket)
             resp.contents
           end
       end
@@ -421,23 +398,20 @@ module Terrafying
         @endpoint_service[service_name] ||=
           begin
             resp = @ec2_client.describe_vpc_endpoint_service_configurations(
-              {
-                filters: [
-                  {
-                    name: "service-name",
-                    values: [service_name],
-                  },
-                ],
-              }
+              filters: [
+                {
+                  name: 'service-name',
+                  values: [service_name]
+                }
+              ]
             )
 
             endpoint_services = resp.service_configurations
-            case
-            when endpoint_services.count == 1
+            if endpoint_services.count == 1
               endpoint_services.first
-            when endpoint_services.count < 1
+            elsif endpoint_services.count < 1
               raise "No endpoint service with name '#{service_name}' was found."
-            when endpoint_services.count > 1
+            elsif endpoint_services.count > 1
               raise "More than one endpoint service with name '#{service_name}' was found: " + endpoint_services.join(', ')
             end
           end
@@ -449,16 +423,15 @@ module Terrafying
           begin
             resp = @ec2_client.describe_vpc_endpoint_service_configurations
 
-            services = resp.service_configurations.select { |service|
+            services = resp.service_configurations.select do |service|
               service.network_load_balancer_arns.include?(arn)
-            }
+            end
 
-            case
-            when services.count == 1
+            if services.count == 1
               services.first
-            when services.count < 1
+            elsif services.count < 1
               raise "No endpoint service with lb arn '#{arn}' was found."
-            when services.count > 1
+            elsif services.count > 1
               raise "More than one endpoint service with lb arn '#{arn}' was found: " + services.join(', ')
             end
           end
@@ -468,14 +441,13 @@ module Terrafying
         @lbs ||= {}
         @lbs[name] ||=
           begin
-            load_balancers = @elb_client.describe_load_balancers({ names: [name] }).load_balancers
+            load_balancers = @elb_client.describe_load_balancers(names: [name]).load_balancers
 
-            case
-            when load_balancers.count == 1
+            if load_balancers.count == 1
               load_balancers.first
-            when load_balancers.count < 1
+            elsif load_balancers.count < 1
               raise "No load balancer with name '#{name}' was found."
-            when load_balancers.count > 1
+            elsif load_balancers.count > 1
               raise "More than one load balancer with name '#{name}' was found: " + load_balancers.join(', ')
             end
           end
@@ -486,9 +458,7 @@ module Terrafying
         @target_groups[arn] ||=
           begin
             resp = @elb_client.describe_target_groups(
-              {
-                load_balancer_arn: arn,
-              }
+              load_balancer_arn: arn
             )
 
             resp.target_groups
@@ -500,16 +470,16 @@ module Terrafying
         next_token = nil
 
         loop do
-          resp = @autoscaling_client.describe_auto_scaling_groups({ next_token: next_token })
+          resp = @autoscaling_client.describe_auto_scaling_groups(next_token: next_token)
 
-          asgs = asgs + resp.auto_scaling_groups.select { |asg|
-            matches = asg.tags.select { |tag|
+          asgs += resp.auto_scaling_groups.select do |asg|
+            matches = asg.tags.select do |tag|
               expectedTags[tag.key.to_sym] == tag.value ||
                 expectedTags[tag.key] == tag.value
-            }
+            end
 
             matches.count == expectedTags.count
-          }
+          end
 
           if resp.next_token
             next_token = resp.next_token
@@ -520,7 +490,39 @@ module Terrafying
 
         asgs
       end
-    end
 
+      def products(products_filter, _region = 'us-east-1')
+        next_token = nil
+        Enumerator.new do |y|
+          loop do
+            resp = @pricing_client.get_products(products_filter.merge(next_token: next_token))
+            resp.price_list.each do |product|
+              y << product
+            end
+            next_token = resp.next_token
+            break if next_token.nil?
+          end
+        end
+      end
+
+      def instance_type_vcpu_count(instance_type, location = 'EU (Ireland)')
+        products_filter = {
+          service_code: 'AmazonEC2',
+          filters: [
+            { field: 'operatingSystem', type: 'TERM_MATCH', value: 'Linux' },
+            { field: 'tenancy', type: 'TERM_MATCH', value: 'Shared' },
+            { field: 'instanceType', type: 'TERM_MATCH', value: instance_type },
+            { field: 'location', type: 'TERM_MATCH', value: location },
+            { field: 'preInstalledSw', type: 'TERM_MATCH', value: 'NA' }
+          ],
+          format_version: 'aws_v1'
+        }
+
+        products(products_filter).each do |product|
+          vcpu = JSON.parse(product)['product']['attributes']['vcpu']
+          return vcpu.to_i if vcpu
+        end
+      end
+    end
   end
 end

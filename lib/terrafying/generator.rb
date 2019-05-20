@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'base64'
 require 'erb'
@@ -6,40 +8,36 @@ require 'deep_merge'
 require 'terrafying/aws'
 
 module Terrafying
-
-  ARG_PLACEHOLDER = "ARG_PLACEHOLDER123"
+  ARG_PLACEHOLDER = 'ARG_PLACEHOLDER123'
 
   class Ref
-
     def fn_call(fn, *args)
-      if args.length == 0
-        args = [ARG_PLACEHOLDER]
-      end
+      args = [ARG_PLACEHOLDER] if args.empty?
       FnRef.new(fn: fn, args: args, ref: self)
     end
 
     def downcase
-      fn_call("lower")
+      fn_call('lower')
     end
 
     def strip
-      fn_call("trimspace")
+      fn_call('trimspace')
     end
 
     def split(separator)
-      fn_call("split", separator, ARG_PLACEHOLDER)
+      fn_call('split', separator, ARG_PLACEHOLDER)
     end
 
-    def slice(idx, length=0)
+    def slice(idx, length = 0)
       if length != 0
-        fn_call("slice", ARG_PLACEHOLDER, idx, idx+length)
+        fn_call('slice', ARG_PLACEHOLDER, idx, idx + length)
       else
-        fn_call("element", ARG_PLACEHOLDER, idx)
+        fn_call('element', ARG_PLACEHOLDER, idx)
       end
     end
 
     def realise
-      ""
+      ''
     end
 
     def to_s
@@ -47,15 +45,15 @@ module Terrafying
     end
 
     def to_str
-      self.to_s
+      to_s
     end
 
     def <=>(other)
-      self.to_s <=> other.to_s
+      to_s <=> other.to_s
     end
 
     def ==(other)
-      self.to_s == other.to_s
+      to_s == other.to_s
     end
 
     def [](key)
@@ -66,18 +64,17 @@ module Terrafying
       end
     end
 
-    def []=(k, v)
+    def []=(_k, _v)
       raise "You can't set a value this way"
     end
-
   end
 
   class RootRef < Ref
     def initialize(
-          kind: :resource,
-          type: "",
-          name:
-        )
+      kind: :resource,
+      type: '',
+      name:
+    )
       @kind = kind
       @type = type
       @name = name
@@ -85,16 +82,14 @@ module Terrafying
 
     def realise
       type = [@type]
-      if @kind != :resource
-        type = [@kind, @type]
-      end
+      type = [@kind, @type] if @kind != :resource
 
-      (type + [@name]).reject(&:empty?).join(".")
+      (type + [@name]).reject(&:empty?).join('.')
     end
 
     def fn_call(fn, *args)
       if @kind == :resource
-        self["id"].fn_call(fn, *args)
+        self['id'].fn_call(fn, *args)
       else
         super
       end
@@ -111,9 +106,9 @@ module Terrafying
 
   class AttributeRef < Ref
     def initialize(
-          ref:,
-          key:
-        )
+      ref:,
+      key:
+    )
       @ref = ref
       @key = key
     end
@@ -125,9 +120,9 @@ module Terrafying
 
   class IndexRef < Ref
     def initialize(
-          ref:,
-          idx:
-        )
+      ref:,
+      idx:
+    )
       @ref = ref
       @idx = idx
     end
@@ -139,10 +134,10 @@ module Terrafying
 
   class FnRef < Ref
     def initialize(
-          ref:,
-          fn:,
-          args: []
-        )
+      ref:,
+      fn:,
+      args: []
+    )
       @ref = ref
       @fn = fn
       @args = args
@@ -150,7 +145,7 @@ module Terrafying
 
     def realise
       ref = @ref.realise
-      args = @args.map { |arg|
+      args = @args.map do |arg|
         if arg == ARG_PLACEHOLDER
           ref
         elsif arg.is_a? String
@@ -158,19 +153,18 @@ module Terrafying
         else
           arg
         end
-      }.join(", ")
+      end.join(', ')
 
       "#{@fn}(#{args})"
     end
   end
 
   class Context
-
-    REGION = ENV.fetch("AWS_REGION", "eu-west-1")
+    REGION = ENV.fetch('AWS_REGION', 'eu-west-1')
 
     PROVIDER_DEFAULTS = {
       aws: { region: REGION }
-    }
+    }.freeze
 
     def self.bundle(&block)
       ctx = Context.new
@@ -182,7 +176,7 @@ module Terrafying
 
     def initialize
       @output = {
-        "resource" => {}
+        'resource' => {}
       }
       @children = []
     end
@@ -195,6 +189,7 @@ module Terrafying
       key = provider_key(name, spec)
       @providers ||= {}
       raise "Duplicate provider configuration detected for #{key}" if key_exists_spec_differs(key, name, spec)
+
       @providers[key] = { name.to_s => spec }
       @output['provider'] = @providers.values
       key
@@ -209,37 +204,39 @@ module Terrafying
     end
 
     def local(name, value)
-      @output["locals"] ||= {}
+      @output['locals'] ||= {}
 
-      raise "Local already exists #{name.to_s}" if @output["locals"].has_key? name.to_s
+      raise "Local already exists #{name}" if @output['locals'].key? name.to_s
 
-      @output["locals"][name.to_s] = value
+      @output['locals'][name.to_s] = value
       RootRef.new(kind: :local, name: name)
     end
 
     def var(name, spec)
-      @output["variable"] ||= {}
+      @output['variable'] ||= {}
 
-      raise "Var already exists #{name.to_s}" if @output["variable"].has_key? name.to_s
+      raise "Var already exists #{name}" if @output['variable'].key? name.to_s
 
-      @output["variable"][name.to_s] = spec
+      @output['variable'][name.to_s] = spec
       RootRef.new(kind: :var, name: name)
     end
 
     def data(type, name, spec)
-      @output["data"] ||= {}
-      @output["data"][type.to_s] ||= {}
+      @output['data'] ||= {}
+      @output['data'][type.to_s] ||= {}
 
-      raise "Data already exists #{type.to_s}.#{name.to_s}" if @output["data"][type.to_s].has_key? name.to_s
-      @output["data"][type.to_s][name.to_s] = spec
+      raise "Data already exists #{type}.#{name}" if @output['data'][type.to_s].key? name.to_s
+
+      @output['data'][type.to_s][name.to_s] = spec
       RootRef.new(kind: :data, type: type, name: name)
     end
 
     def resource(type, name, attributes)
-      @output["resource"][type.to_s] ||= {}
+      @output['resource'][type.to_s] ||= {}
 
-      raise "Resource already exists #{type.to_s}.#{name.to_s}" if @output["resource"][type.to_s].has_key? name.to_s
-      @output["resource"][type.to_s][name.to_s] = attributes
+      raise "Resource already exists #{type}.#{name}" if @output['resource'][type.to_s].key? name.to_s
+
+      @output['resource'][type.to_s][name.to_s] = attributes
       RootRef.new(kind: :resource, type: type, name: name)
     end
 
@@ -255,8 +252,8 @@ module Terrafying
       @children.inject(@output) { |out, c| out.deep_merge(c.output_with_children) }
     end
 
-    def id_of(type,name)
-      output_of(type, name, "id")
+    def id_of(type, name)
+      output_of(type, name, 'id')
     end
 
     def output_of(type, name, key)
@@ -270,8 +267,8 @@ module Terrafying
     def resource_names
       out = output_with_children
       ret = []
-      for type in out["resource"].keys
-        for id in out["resource"][type].keys
+      out['resource'].keys.each do |type|
+        out['resource'][type].keys.each do |id|
           ret << "#{type}.#{id}"
         end
       end
@@ -281,8 +278,8 @@ module Terrafying
     def resources
       out = output_with_children
       ret = []
-      for type in out["resource"].keys
-        for id in out["resource"][type].keys
+      out['resource'].keys.each do |type|
+        out['resource'][type].keys.each do |id|
           ret << "${#{type}.#{id}.id}"
         end
       end
@@ -295,23 +292,21 @@ module Terrafying
     end
 
     def tf_safe(str)
-      str.gsub(/[\.\s\/\?]/, "-")
+      str.gsub(%r{[\.\s/\?]}, '-')
     end
-
   end
 
   class RootContext < Context
-
     def initialize
       super
       @providers = {}
     end
 
     def backend(name, spec)
-      @output["terraform"] = {
+      @output['terraform'] = {
         backend: {
-          name => spec,
-        },
+          name => spec
+        }
       }
     end
 
@@ -324,22 +319,19 @@ module Terrafying
     end
 
     def output_with_children
-
-      PROVIDER_DEFAULTS.each { |name, spec|
-        if not key_exists_spec_differs(provider_key(name, spec), name, spec)
+      PROVIDER_DEFAULTS.each do |name, spec|
+        unless key_exists_spec_differs(provider_key(name, spec), name, spec)
           provider(name, spec)
         end
-      }
+      end
 
       super
     end
-
   end
 
   Generator = RootContext.new
 
   module DSL
-
     %w[
       add!
       aws
@@ -353,12 +345,10 @@ module Terrafying
       tf_safe
       id_of
       output_of
-    ].each { |name|
-      define_method(name) { |*args|
+    ].each do |name|
+      define_method(name) do |*args|
         Generator.send(name, *args)
-      }
-    }
-
+      end
+    end
   end
-
 end
