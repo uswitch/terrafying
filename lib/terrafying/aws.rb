@@ -166,6 +166,26 @@ module Terrafying
           end
       end
 
+      def nat_gateways_for_vpc(vpc_id)
+        @nat_gateways_for_vpc ||= {}
+        @nat_gateways_for_vpc[vpc_id] ||=
+          begin
+            resp = @ec2_client.describe_nat_gateways(
+              filter: [
+                { name: 'vpc-id', values: [vpc_id] }
+              ]
+            )
+
+            nat_gateways = resp.nat_gateways
+
+            if nat_gateways.count >= 1
+              nat_gateways
+            elsif nat_gateways.count < 1
+              raise "No nat-gateways for vpc #{vpc_id} were found"
+            end
+          end
+      end
+
       def security_groups(*names)
         names.map { |n| security_group(n) }
       end
