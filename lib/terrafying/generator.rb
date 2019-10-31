@@ -252,9 +252,11 @@ module Terrafying
       @children.inject(@output) { |out, c| out.deep_merge(c.output_with_children) }
       out = @output
       if @opts_provider
-        out['resource'].keys.each do |type|
-          out['resource'][type].keys.each do |id|
-            out['resource'][type][id]['provider'] = @opts_provider
+        out.keys.select { |k| [:resource, :data].include?(k.to_sym) }.each do |key|
+          out[key].keys.each do |type|
+            out[key][type].keys.each do |id|
+              out[key][type][id]['provider'] = @opts_provider
+            end
           end
         end
       end
