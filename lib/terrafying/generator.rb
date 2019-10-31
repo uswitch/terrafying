@@ -250,6 +250,15 @@ module Terrafying
 
     def output_with_children
       @children.inject(@output) { |out, c| out.deep_merge(c.output_with_children) }
+      out = @output
+      if @opts_provider
+        out['resource'].keys.each do |type|
+          out['resource'][type].keys.each do |id|
+            out['resource'][type][id]['provider'] = @opts_provider
+          end
+        end
+      end
+      out
     end
 
     def id_of(type, name)
