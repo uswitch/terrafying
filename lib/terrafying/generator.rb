@@ -254,8 +254,12 @@ module Terrafying
       if @opts_provider
         out.keys.select { |k| [:resource, :data].include?(k.to_sym) }.each do |key|
           out[key].keys.each do |type|
-            out[key][type].keys.each do |id|
-              out[key][type][id]['provider'] = @opts_provider
+            @opts_provider.each do |provider|
+              if type.to_s.split('_').first.match?(provider.split('.').first)
+                out[key][type].keys.each do |id|
+                  out[key][type][id]['provider'] = provider
+                end
+              end
             end
           end
         end
