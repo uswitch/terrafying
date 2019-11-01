@@ -36,7 +36,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'aws-sdk-s3', '~> 1'
 
   spec.add_runtime_dependency 'deep_merge', '~> 1.1.1'
-  spec.add_runtime_dependency 'netaddr', '>= 2.0.4'
+  spec.add_runtime_dependency 'netaddr', '~> 1.5'
   spec.add_runtime_dependency 'thor', '~> 0.19.1'
   spec.add_runtime_dependency 'xxhash', '~> 0.4.0'
 end
