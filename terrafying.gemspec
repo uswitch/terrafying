@@ -31,6 +31,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'aws-sdk-dynamodb', '~> 1'
   spec.add_runtime_dependency 'aws-sdk-ec2', '~> 1'
   spec.add_runtime_dependency 'aws-sdk-elasticloadbalancingv2', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-kafka', '~> 1'
   spec.add_runtime_dependency 'aws-sdk-pricing', '~> 1.9.0'
   spec.add_runtime_dependency 'aws-sdk-route53', '~> 1'
   spec.add_runtime_dependency 'aws-sdk-s3', '~> 1'

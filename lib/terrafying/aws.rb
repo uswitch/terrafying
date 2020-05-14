@@ -7,6 +7,7 @@ require 'aws-sdk-route53'
 require 'aws-sdk-s3'
 require 'aws-sdk-sts'
 require 'aws-sdk-pricing'
+require 'aws-sdk-kafka'
 require 'json'
 
 Aws.use_bundled_cert!
@@ -36,7 +37,7 @@ module Terrafying
         @s3_client = ::Aws::S3::Client.new
         @sts_client = ::Aws::STS::Client.new
         @pricing_client = ::Aws::Pricing::Client.new(region: 'us-east-1') # no AWS Pricing endpoint in Europe
-
+        @msk_client = ::Aws::Kafka::Client.new
         @region = region
       end
 
@@ -541,6 +542,18 @@ module Terrafying
         products(products_filter).each do |product|
           vcpu = JSON.parse(product)['product']['attributes']['vcpu']
           return vcpu.to_i if vcpu
+        end
+      end
+
+      def msk_brokers(cluster_arn)
+        @brokers ||= {}
+        @brokers[cluster_arn] ||= begin
+          resp = @msk_client.get_bootstrap_brokers(cluster_arn: cluster_arn)
+          brokers = resp.bootstrap_broker_string_tls.split(',')
+
+          raise "No brokers found for cluster with arn: \"#{cluster_arn}\"'" if brokers.empty?
+
+          brokers
         end
       end
     end
