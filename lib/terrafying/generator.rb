@@ -240,6 +240,16 @@ module Terrafying
       RootRef.new(kind: :resource, type: type, name: name)
     end
 
+    def tf_module(name, spec)
+      @output['module'] ||= {}
+
+      raise "Module already exists #{name}" if @output['module'].key? name.to_s
+
+      @output['module'][name.to_s] = spec
+
+      RootRef.new(kind: :module, name: name)
+    end
+
     def template(relative_path, params = {})
       dir = caller_locations[0].path
       filename = File.join(File.dirname(dir), relative_path)
@@ -341,6 +351,7 @@ module Terrafying
       provider
       resource
       data
+      tf_module
       template
       tf_safe
       id_of
