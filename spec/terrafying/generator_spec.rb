@@ -92,6 +92,12 @@ RSpec.describe Terrafying::Ref do
     expect(r_thing_id.to_s).to eq('${aws_wibble.foo.thing.id}')
   end
 
+  it 'lets us look up an output' do
+    r = Terrafying::RootRef.new(kind: :module, name: 'wibble')
+    r_thing = r['thing']
+    expect(r_thing.to_s).to eq('${module.wibble.thing}')
+  end
+
   it 'lets us look up a var when called fn' do
     r = Terrafying::RootRef.new(kind: :resource, type: 'aws_wibble', name: 'foo')
     r_lower = r.downcase
@@ -273,6 +279,15 @@ RSpec.describe Terrafying::Context do
     expect do
       context.data(:aws_instance, 'wibble', {})
     end.to raise_error(/aws_instance.wibble/)
+  end
+
+  it 'should reject duplicate module' do
+    context = Terrafying::Context.new
+
+    context.tf_module(:wibble, {})
+    expect do
+      context.tf_module(:wibble, {})
+    end.to raise_error(/wibble/)
   end
 
   context 'output_of' do
