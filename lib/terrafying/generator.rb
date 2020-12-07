@@ -302,7 +302,7 @@ module Terrafying
     end
 
     def tf_safe(str)
-      str.gsub(%r{[\.\s/\?]}, '-').gsub(%r{\*}, "star")
+      str.gsub(%r{[\.\s/\?]}, '-').gsub(%r{\*}, "star").gsub(%r{^(\d)}, '_\1')
     end
   end
 
