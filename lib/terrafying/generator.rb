@@ -199,6 +199,18 @@ module Terrafying
       [name, spec[:alias]].compact.join('.')
     end
 
+    def required_provider(name, spec)
+      @output['terraform'] ||= {}
+      @output['terraform']['required_providers'] ||= {}
+      return if @output['terraform']['required_providers'].key? name.to_s
+
+      @output['terraform']['required_providers'][name.to_s] = spec
+    end
+
+    def required_version(version)
+      @output['terraform']['required_version'] = ">= #{version}"
+    end
+
     def key_exists_spec_differs(key, name, spec)
       @providers.key?(key) && spec != @providers[key][name.to_s]
     end
