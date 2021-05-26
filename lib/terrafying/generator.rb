@@ -202,13 +202,16 @@ module Terrafying
     def required_provider(name, spec)
       @output['terraform'] ||= {}
       @output['terraform']['required_providers'] ||= {}
-      return if @output['terraform']['required_providers'].key? name.to_s
+      raise "Duplicate required_provider configuration detected for #{name}" if @output['terraform']['required_providers'].key? name.to_s
 
       @output['terraform']['required_providers'][name.to_s] = spec
     end
 
     def required_version(version)
-      @output['terraform']['required_version'] = ">= #{version}"
+      @output['terraform'] ||= {}
+      raise "required_version already configure" if @output['terraform']['required_version']
+
+      @output['terraform']['required_version'] = "#{version}"
     end
 
     def key_exists_spec_differs(key, name, spec)
