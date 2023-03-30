@@ -35,6 +35,15 @@ in stdenv.mkDerivation rec {
 
   src = ./.;
 
+  installPhase = ''
+    mkdir -p $out
+    cp -R $src/* $out
+
+    for i in `ls $out/bin`; do
+      chmod +x $out/bin
+    done
+  '';
+
   shellHook = ''
     export PKG_CONFIG_PATH=${pkgs.libxml2}/lib/pkgconfig:${pkgs.libxslt}/lib/pkgconfig:${pkgs.zlib}/lib/pkgconfig
 
