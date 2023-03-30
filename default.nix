@@ -1,5 +1,8 @@
 let
-  pkgs = import <nixpkgs> {};
+  pkgs = import (builtins.fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/893186f4fd4c1e697b2bc38aa8f268f236d5ea02.tar.gz";
+  }) {};
+
   stdenv = pkgs.stdenv;
   ruby = (pkgs.ruby_2_3_0.override { cursesSupport = true; });
 
