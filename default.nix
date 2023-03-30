@@ -16,13 +16,10 @@ let
     }
   else
     [];
-
-  platformBuildInputs = if stdenv.isDarwin then [] else [
-    pkgs.glibc
-  ];
 in stdenv.mkDerivation rec {
   name = "terrafying";
-  buildInputs = platformBuildInputs ++ [
+
+  buildInputs = [
     ruby
     pkgs.libxml2
     pkgs.libxslt
@@ -31,7 +28,7 @@ in stdenv.mkDerivation rec {
     pkgs.openssl
     pkgs.readline
     terraform
-  ];
+  ] ++ (pkgs.lib.optionals (!stdenv.isDarwin) [ pkgs.glibc ]);
 
   src = ./.;
 
