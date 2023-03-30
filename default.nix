@@ -1,5 +1,8 @@
 let
-  pkgs = import <nixpkgs> {};
+  pkgs = import (builtins.fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/893186f4fd4c1e697b2bc38aa8f268f236d5ea02.tar.gz";
+  }) {};
+
   stdenv = pkgs.stdenv;
   ruby = (pkgs.ruby_2_3_0.override { cursesSupport = true; });
 
@@ -13,13 +16,10 @@ let
     }
   else
     [];
-
-  platformBuildInputs = if stdenv.isDarwin then [] else [
-    pkgs.glibc
-  ];
 in stdenv.mkDerivation rec {
   name = "terrafying";
-  buildInputs = platformBuildInputs ++ [
+
+  buildInputs = [
     ruby
     pkgs.libxml2
     pkgs.libxslt
@@ -28,7 +28,18 @@ in stdenv.mkDerivation rec {
     pkgs.openssl
     pkgs.readline
     terraform
-  ];
+  ] ++ (pkgs.lib.optionals (!stdenv.isDarwin) [ pkgs.glibc ]);
+
+  src = ./.;
+
+  installPhase = ''
+    mkdir -p $out
+    cp -R $src/* $out
+
+    for i in `ls $out/bin`; do
+      chmod +x $out/bin
+    done
+  '';
 
   shellHook = ''
     export PKG_CONFIG_PATH=${pkgs.libxml2}/lib/pkgconfig:${pkgs.libxslt}/lib/pkgconfig:${pkgs.zlib}/lib/pkgconfig
