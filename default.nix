@@ -33,6 +33,8 @@ in stdenv.mkDerivation rec {
     terraform
   ];
 
+  src = ./.;
+
   shellHook = ''
     export PKG_CONFIG_PATH=${pkgs.libxml2}/lib/pkgconfig:${pkgs.libxslt}/lib/pkgconfig:${pkgs.zlib}/lib/pkgconfig
 
