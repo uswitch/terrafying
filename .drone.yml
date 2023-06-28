@@ -1,6 +1,6 @@
 pipeline:
   test:
-    image: ruby:2.6.3
+    image: ruby:3.2.2
     commands:
       - bundle install
       - rake spec
@@ -8,7 +8,7 @@ pipeline:
       event: push
 
   build:
-    image: ruby:2.6.3
+    image: ruby:3.2.2
     commands:
       - rake version
       - rake build
@@ -27,7 +27,7 @@ pipeline:
       event: push
 
   push:
-    image: ruby:2.6.3
+    image: ruby:3.2.2
     secrets: [ rubygems_api_key ]
     commands:
       - rake push
