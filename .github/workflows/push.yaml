@@ -29,7 +29,11 @@ jobs:
           ruby-version: 3.2.2
       - run: rake version
       - run: rake build
-
+      - uses: actions/upload-artifact@v3
+        with:
+          name: pkg
+          path: pkg/
+          
   docker:
     needs: build
     runs-on: ubuntu-latest
