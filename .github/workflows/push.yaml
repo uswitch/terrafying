@@ -64,4 +64,4 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          build-args: "TERRAFYING_VERSION=${{ contains(github.ref, 'refs/tags/') && github.ref_name }}"
+          build-args: "TERRAFYING_VERSION=${{ contains(github.ref, 'refs/tags/') && github.ref_name || '0.0.0' }}"
