@@ -54,7 +54,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v4
         with:
-          images: quay.io/uswitch/terrafying-components
+          images: quay.io/uswitch/terrafying
           tags: |
             type=sha,prefix=,format=long
             type=semver,pattern={{version}}
