@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   push:
-    if: github.ref_name == 'master' && contains(github.ref, 'refs/tags/v')
     env:
       RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
     runs-on: ubuntu-latest

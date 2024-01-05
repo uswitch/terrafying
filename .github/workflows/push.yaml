@@ -37,6 +37,8 @@ jobs:
   docker:
     needs: build
     runs-on: ubuntu-latest
+    env:
+      RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Login to Quay.io
@@ -54,7 +56,7 @@ jobs:
         with:
           images: quay.io/uswitch/terrafying-components
           tags: |
-            type=sha,prefix=,format=long,
+            type=sha,prefix=,format=long
             type=semver,pattern={{version}}
       - uses: docker/build-push-action@v4
         with:
@@ -62,3 +64,4 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: "TERRAFYING_VERSION=${{ contains(github.ref, 'refs/tags/') && github.ref_name }}"
