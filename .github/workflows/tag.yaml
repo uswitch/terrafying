@@ -1,0 +1,23 @@
+name: tag
+
+on: 
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  push:
+    env:
+      RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: 3.2.2
+      - run: rake push
