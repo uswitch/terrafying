@@ -24,7 +24,7 @@ end
 
 desc 'Update the version for terrafying to DRONE_TAG. (0.0.0 if DRONE_TAG not set)'
 task :version do
-  ver = ENV['DRONE_TAG'] || '0.0.0'
+  ver = ENV['GHA_TERRAFYING_VERSION'] || '0.0.0'
   version_file = 'lib/terrafying/version.rb'
   content = File.read(version_file).gsub(/0\.0\.0/, ver)
   File.open(version_file, 'w') { |file| file.puts content }
