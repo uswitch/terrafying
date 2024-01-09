@@ -63,17 +63,16 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: pkg
-          path: pkg/
+          path: ./
       - id: meta
         uses: docker/metadata-action@v4
         with:
           images: quay.io/uswitch/terrafying
           tags: type=semver,pattern={{version}}
-      - run: 'echo TERRAFYING_VERSION=${{ github.ref_name }}' 
       - uses: docker/build-push-action@v4
         with:
           context: .
           labels: ${{ steps.meta.outputs.labels }}
-          push: true
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           build-args: "TERRAFYING_VERSION=${{ github.ref_name }}"
