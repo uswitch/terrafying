@@ -36,6 +36,7 @@ jobs:
       GHA_TERRAFYING_VERSION: ${{ github.ref_name }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
