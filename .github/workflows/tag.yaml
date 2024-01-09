@@ -70,6 +70,7 @@ jobs:
         with:
           images: quay.io/uswitch/terrafying
           tags: type=semver,pattern={{version}}
+      - run: 'echo TERRAFYING_VERSION=${{ github.ref_name }}' 
       - uses: docker/build-push-action@v4
         with:
           context: .
