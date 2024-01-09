@@ -10,9 +10,27 @@ permissions:
   id-token: write
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GHA_TERRAFYING_VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: 3.2.2
+      - run: rake version
+      - run: rake build
+      - uses: actions/upload-artifact@v3
+        with:
+          name: pkg
+          path: pkg/
+
   push:
     env:
       RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+      GHA_TERRAFYING_VERSION: ${{ github.ref_name }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,3 +39,33 @@ jobs:
           bundler-cache: true
           ruby-version: 3.2.2
       - run: rake push
+
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+      - uses: actions/download-artifact@v3
+        with:
+          name: pkg
+          path: pkg/
+      - id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: quay.io/uswitch/terrafying
+          tags: type=semver,pattern={{version}}
+      - uses: docker/build-push-action@v4
+        with:
+          context: .
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: "TERRAFYING_VERSION=${{ github.ref_name }}"
