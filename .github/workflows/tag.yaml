@@ -36,7 +36,6 @@ jobs:
       GHA_TERRAFYING_VERSION: ${{ github.ref_name }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
@@ -44,7 +43,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: pkg
-          path: lib/
+          path: ./
       - run: ls -R
       - run: rake push
 
