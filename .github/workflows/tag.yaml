@@ -45,7 +45,6 @@ jobs:
         with:
           name: pkg
           path: ./
-      - run: ls -R
       - run: rake push
 
   docker:
