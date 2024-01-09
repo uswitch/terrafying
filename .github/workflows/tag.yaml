@@ -25,9 +25,12 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: pkg
-          path: pkg/
+          path: |
+            pkg/
+            lib/
 
   push:
+    needs: build
     env:
       RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
       GHA_TERRAFYING_VERSION: ${{ github.ref_name }}
@@ -38,6 +41,10 @@ jobs:
         with:
           bundler-cache: true
           ruby-version: 3.2.2
+      - uses: actions/download-artifact@v3
+        with:
+          name: pkg
+          path: ./
       - run: rake push
 
   docker:
@@ -62,6 +69,7 @@ jobs:
         with:
           images: quay.io/uswitch/terrafying
           tags: type=semver,pattern={{version}}
+      - run: 'echo TERRAFYING_VERSION=${{ github.ref_name }}' 
       - uses: docker/build-push-action@v4
         with:
           context: .
