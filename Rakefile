@@ -17,10 +17,9 @@ end
 
 desc 'Push gem to rubygems'
 task :push do
-    sh("echo pkg/terrafying-#{terrafying_version}.gem")
-  # gem_config = { rubygems_api_key: rubygems_api_key }.to_yaml
-  # File.open('.gemconfig', 'w') { |file| file.write(gem_config) }
-  # sh("gem push --config-file .gemconfig pkg/terrafying-#{terrafying_version}.gem")
+  gem_config = { rubygems_api_key: rubygems_api_key }.to_yaml
+  File.open('.gemconfig', 'w') { |file| file.write(gem_config) }
+  sh("gem push --config-file .gemconfig pkg/terrafying-#{terrafying_version}.gem")
 end
 
 desc 'Update the version for terrafying to DRONE_TAG. (0.0.0 if DRONE_TAG not set)'
