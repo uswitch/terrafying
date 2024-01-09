@@ -28,7 +28,6 @@ jobs:
           path: |
             pkg/
             lib/
-      - run: ls -R
 
   push:
     needs: build
@@ -42,10 +41,10 @@ jobs:
         with:
           bundler-cache: true
           ruby-version: 3.2.2
-      # - uses: actions/download-artifact@v3
-      #   with:
-      #     name: lib
-      #     path: lib/
+      - uses: actions/download-artifact@v3
+        with:
+          name: pkg
+          path: lib/
       - run: rake push
 
   docker:
