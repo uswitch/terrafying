@@ -28,7 +28,7 @@ jobs:
           path: |
             pkg/
             lib/
-      - run: ls
+      - run: ls -R
 
   push:
     needs: build
