@@ -41,7 +41,7 @@ jobs:
         with:
           bundler-cache: true
           ruby-version: 3.2.2
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: pkg
           path: ./
@@ -60,7 +60,7 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: pkg
           path: ./
