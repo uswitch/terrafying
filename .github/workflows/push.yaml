@@ -32,7 +32,7 @@ jobs:
           ruby-version: 3.2.2
       - run: rake version
       - run: rake build
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: pkg
           path: pkg/
@@ -50,16 +50,16 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: pkg
           path: pkg/
       - id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: quay.io/uswitch/terrafying
           tags: type=sha,prefix=,format=long
-      - uses: docker/build-push-action@v4
+      - uses: docker/build-push-action@v6
         with:
           context: .
           labels: ${{ steps.meta.outputs.labels }}
