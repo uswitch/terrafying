@@ -1,4 +1,4 @@
-FROM ruby:3.4.8-alpine3.23
+FROM ruby:3.4.10-alpine3.23
 
 ARG TERRAFYING_VERSION=0.0.0
 
